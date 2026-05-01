@@ -30,92 +30,126 @@ export default function Quotes() {
   async function loadCustomers() {
     const snap = await getDocs(collection(db, "customers"));
 
-    setCustomers(
-      snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-    );
+    const data = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    setCustomers(data);
   }
 
   function update(name, value) {
-    setForm({ ...form, [name]: value });
+    setForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
   }
 
   function selectCustomer(id) {
-    const customer = customers.find(c => c.id === id) || null;
+    const customer =
+      customers.find(c => c.id === id) || null;
 
     setSelectedCustomer(customer);
-    setForm({
-      ...form,
+
+    setForm(prev => ({
+      ...prev,
       customerId: id
-    });
+    }));
 
     setResult(null);
   }
 
-  function getRules(country) {
-    switch (country) {
-      case "Saudi Arabia":
-        return {
-          currency: "GBP",
-          dutyRate: 0.05,
-          clearance: 40,
-          delivery: 35
-        };
+  function calculateSaudiCourier(value) {
+    const duty = value * 0.05;
 
-      case "Qatar":
-        return {
-          currency: "GBP",
-          dutyRate: 0.05,
-          clearance: 35,
-          delivery: 30
-        };
+    let merchandise = value * 0.003464;
 
-      case "Singapore":
-        return {
-          currency: "SGD",
-          dutyRate: 0,
-          clearance: 45,
-          delivery: 40
-        };
+    if (merchandise < 27.75) merchandise = 27.75;
+    if (merchandise > 538.4) merchandise = 538.4;
 
-      default:
-        return {
-          currency: "GBP",
-          dutyRate: 0,
-          clearance: 0,
-          delivery: 0
-        };
-    }
+    const dutyTaxPaidFee = 25;
+
+    const total =
+      duty +
+      merchandise +
+      dutyTaxPaidFee;
+
+    return {
+      country: "Saudi Arabia",
+      currency: "GBP",
+      duty,
+      clearance: merchandise,
+      delivery: dutyTaxPaidFee,
+      total
+    };
+  }
+
+  function calculateQatar(value) {
+    const duty = value * 0.05;
+    const clearance = 35;
+    const delivery = 30;
+
+    return {
+      country: "Qatar",
+      currency: "GBP",
+      duty,
+      clearance,
+      delivery,
+      total: duty + clearance + delivery
+    };
+  }
+
+  function calculateSingapore(value) {
+    const duty = 0;
+    const clearance = 45;
+    const delivery = 40;
+
+    return {
+      country: "Singapore",
+      currency: "SGD",
+      duty,
+      clearance,
+      delivery,
+      total: clearance + delivery
+    };
+  }
+
+  function calculateDefault(value, country) {
+    return {
+      country,
+      currency: "GBP",
+      duty: 0,
+      clearance: 0,
+      delivery: 0,
+      total: 0
+    };
   }
 
   function calculate() {
     if (!selectedCustomer) {
-      alert("Please select a customer");
+      alert("Please select customer");
       return;
     }
 
-    const country = selectedCustomer.country;
     const value = Number(form.value || 0);
+    const country = selectedCustomer.country;
 
-    const rules = getRules(country);
+    let quote;
 
-    const duty = value * rules.dutyRate;
+    if (
+      country === "Saudi Arabia" &&
+      form.transport === "Courier"
+    ) {
+      quote = calculateSaudiCourier(value);
+    } else if (country === "Qatar") {
+      quote = calculateQatar(value);
+    } else if (country === "Singapore") {
+      quote = calculateSingapore(value);
+    } else {
+      quote = calculateDefault(value, country);
+    }
 
-    const total =
-      duty +
-      rules.clearance +
-      rules.delivery;
-
-    setResult({
-      country,
-      currency: rules.currency,
-      duty,
-      clearance: rules.clearance,
-      delivery: rules.delivery,
-      total
-    });
+    setResult(quote);
   }
 
   async function saveQuote() {
@@ -125,13 +159,19 @@ export default function Quotes() {
       customerId: form.customerId,
       customerName: selectedCustomer.name,
       country: selectedCustomer.country,
-      value: Number(form.value),
-      weight: Number(form.weight),
-      pieces: Number(form.pieces),
+      value: Number(form.value || 0),
+      weight: Number(form.weight || 0),
+      pieces: Number(form.pieces || 0),
       transport: form.transport,
-      ...result,
-      createdAt: serverTimestamp(),
-      status: "draft"
+
+      duty: result.duty,
+      clearance: result.clearance,
+      delivery: result.delivery,
+      total: result.total,
+      currency: result.currency,
+
+      status: "draft",
+      createdAt: serverTimestamp()
     });
 
     alert("Quote Saved");
@@ -151,22 +191,29 @@ export default function Quotes() {
           <div className="bg-zinc-900 p-6 rounded-2xl space-y-4">
 
             <select
-              className="w-full p-3 rounded bg-zinc-800"
+              className="w-full p-3 rounded-xl bg-zinc-800"
               value={form.customerId}
-              onChange={e => selectCustomer(e.target.value)}
+              onChange={e =>
+                selectCustomer(e.target.value)
+              }
             >
-              <option value="">Select Customer</option>
+              <option value="">
+                Select Customer
+              </option>
 
               {customers.map(c => (
-                <option key={c.id} value={c.id}>
+                <option
+                  key={c.id}
+                  value={c.id}
+                >
                   {c.name}
                 </option>
               ))}
             </select>
 
             {selectedCustomer && (
-              <div className="bg-zinc-800 rounded p-3 text-sm">
-                Destination Country:{" "}
+              <div className="bg-zinc-800 p-3 rounded-xl text-sm">
+                Destination:{" "}
                 <span className="text-fuchsia-400 font-semibold">
                   {selectedCustomer.country}
                 </span>
@@ -174,30 +221,38 @@ export default function Quotes() {
             )}
 
             <input
-              className="w-full p-3 rounded bg-zinc-800"
+              className="w-full p-3 rounded-xl bg-zinc-800"
               placeholder="Goods Value"
               value={form.value}
-              onChange={e => update("value", e.target.value)}
+              onChange={e =>
+                update("value", e.target.value)
+              }
             />
 
             <input
-              className="w-full p-3 rounded bg-zinc-800"
+              className="w-full p-3 rounded-xl bg-zinc-800"
               placeholder="Weight"
               value={form.weight}
-              onChange={e => update("weight", e.target.value)}
+              onChange={e =>
+                update("weight", e.target.value)
+              }
             />
 
             <input
-              className="w-full p-3 rounded bg-zinc-800"
+              className="w-full p-3 rounded-xl bg-zinc-800"
               placeholder="Pieces"
               value={form.pieces}
-              onChange={e => update("pieces", e.target.value)}
+              onChange={e =>
+                update("pieces", e.target.value)
+              }
             />
 
             <select
-              className="w-full p-3 rounded bg-zinc-800"
+              className="w-full p-3 rounded-xl bg-zinc-800"
               value={form.transport}
-              onChange={e => update("transport", e.target.value)}
+              onChange={e =>
+                update("transport", e.target.value)
+              }
             >
               <option>Courier</option>
               <option>Air</option>
@@ -206,7 +261,7 @@ export default function Quotes() {
 
             <button
               onClick={calculate}
-              className="w-full bg-fuchsia-700 p-3 rounded-xl"
+              className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 p-3 rounded-xl"
             >
               Calculate Quote
             </button>
@@ -217,7 +272,7 @@ export default function Quotes() {
 
             {!result && (
               <div className="text-zinc-400">
-                Select customer and enter values.
+                Enter values to calculate quote.
               </div>
             )}
 
@@ -225,20 +280,33 @@ export default function Quotes() {
               <div className="space-y-3">
 
                 <div className="text-sm text-zinc-400">
-                  {selectedCustomer.name} / {result.country}
+                  {selectedCustomer.name} /{" "}
+                  {result.country}
                 </div>
 
-                <Row label="Duty" value={result.duty} />
-                <Row label="Clearance" value={result.clearance} />
-                <Row label="Delivery" value={result.delivery} />
+                <Row
+                  label="Duty"
+                  value={result.duty}
+                />
 
-                <div className="border-t pt-4 text-3xl font-bold text-fuchsia-500">
-                  {result.currency} {result.total.toFixed(2)}
+                <Row
+                  label="Clearance"
+                  value={result.clearance}
+                />
+
+                <Row
+                  label="Delivery"
+                  value={result.delivery}
+                />
+
+                <div className="border-t border-zinc-800 pt-4 text-3xl font-bold text-fuchsia-500">
+                  {result.currency}{" "}
+                  {Number(result.total).toFixed(2)}
                 </div>
 
                 <button
                   onClick={saveQuote}
-                  className="w-full bg-green-700 p-3 rounded-xl"
+                  className="w-full bg-green-700 hover:bg-green-800 p-3 rounded-xl"
                 >
                   Save Quote
                 </button>
@@ -258,7 +326,9 @@ function Row({ label, value }) {
   return (
     <div className="flex justify-between border-b border-zinc-800 pb-2">
       <span>{label}</span>
-      <span>{Number(value).toFixed(2)}</span>
+      <span>
+        {Number(value || 0).toFixed(2)}
+      </span>
     </div>
   );
 }
