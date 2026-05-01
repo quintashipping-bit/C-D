@@ -3,7 +3,9 @@ import {
   collection,
   getDocs,
   addDoc,
-  serverTimestamp
+  serverTimestamp,
+  doc,
+  getDoc
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
@@ -12,6 +14,12 @@ import Sidebar from "../components/Sidebar";
 export default function Quotes() {
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+
+  const [settings, setSettings] = useState({
+    saudi: null,
+    qatar: null,
+    singapore: null
+  });
 
   const [form, setForm] = useState({
     customerId: "",
@@ -26,6 +34,7 @@ export default function Quotes() {
 
   useEffect(() => {
     loadCustomers();
+    loadSettings();
   }, []);
 
   async function loadCustomers() {
@@ -37,6 +46,34 @@ export default function Quotes() {
     }));
 
     setCustomers(data);
+  }
+
+  async function loadSettings() {
+    const saudiSnap = await getDoc(
+      doc(db, "settings", "saudi")
+    );
+
+    const qatarSnap = await getDoc(
+      doc(db, "settings", "qatar")
+    );
+
+    const singaporeSnap = await getDoc(
+      doc(db, "settings", "singapore")
+    );
+
+    setSettings({
+      saudi: saudiSnap.exists()
+        ? saudiSnap.data()
+        : null,
+
+      qatar: qatarSnap.exists()
+        ? qatarSnap.data()
+        : null,
+
+      singapore: singaporeSnap.exists()
+        ? singaporeSnap.data()
+        : null
+    });
   }
 
   function update(name, value) {
@@ -62,46 +99,85 @@ export default function Quotes() {
 
   /* ---------------- SAUDI ---------------- */
 
-  function calculateSaudiCourier(value) {
-    const duty = value * 0.05;
+  function calculateSaudi(value) {
+    const dutyRate =
+      Number(settings.saudi?.dutyRate || 0.05);
 
-    let merchandise = value * 0.003464;
+    const percentage =
+      Number(
+        settings.saudi?.percentage || 0.003464
+      );
 
-    if (merchandise < 27.75) merchandise = 27.75;
-    if (merchandise > 538.4) merchandise = 538.4;
+    const minMerchandise =
+      Number(
+        settings.saudi?.minMerchandise || 27.75
+      );
 
-    const dutyTaxPaidFee = 25;
+    const maxMerchandise =
+      Number(
+        settings.saudi?.maxMerchandise || 538.4
+      );
+
+    const taxPaidFee =
+      Number(
+        settings.saudi?.taxPaidFee || 25
+      );
+
+    const duty = value * dutyRate;
+
+    let clearance =
+      value * percentage;
+
+    if (clearance < minMerchandise) {
+      clearance = minMerchandise;
+    }
+
+    if (clearance > maxMerchandise) {
+      clearance = maxMerchandise;
+    }
 
     const total =
       duty +
-      merchandise +
-      dutyTaxPaidFee;
+      clearance +
+      taxPaidFee;
 
     return {
       country: "Saudi Arabia",
       currency: "GBP",
       duty,
-      clearance: merchandise,
-      delivery: dutyTaxPaidFee,
+      clearance,
+      delivery: taxPaidFee,
       total
     };
   }
 
   /* ---------------- QATAR ---------------- */
 
-  function calculateQatarCourier(value) {
-    const duty = value * 0.05;
+  function calculateQatar(value) {
+    const dutyRate =
+      Number(settings.qatar?.dutyRate || 0.05);
 
-    const fxRate = 4.65;
-    const qatarValue = value * fxRate;
+    const fxRate =
+      Number(settings.qatar?.fxRate || 4.65);
+
+    const duty = value * dutyRate;
+
+    const qatarValue =
+      value * fxRate;
 
     let legalisation = 0;
 
-    if (qatarValue <= 15000) legalisation = 650;
-    else if (qatarValue <= 100000) legalisation = 1150;
-    else if (qatarValue <= 250000) legalisation = 2650;
-    else if (qatarValue <= 1000000) legalisation = 5150;
-    else legalisation = qatarValue * 0.006;
+    if (qatarValue <= 15000)
+      legalisation = 650;
+    else if (qatarValue <= 100000)
+      legalisation = 1150;
+    else if (qatarValue <= 250000)
+      legalisation = 2650;
+    else if (qatarValue <= 1000000)
+      legalisation = 5150;
+    else
+      legalisation =
+        qatarValue * 0.006;
 
     const total =
       duty +
@@ -120,31 +196,36 @@ export default function Quotes() {
   /* ---------------- SINGAPORE ---------------- */
 
   function calculateSingapore(value) {
-    const cbm = Number(form.cbm || 0);
+    const cbm =
+      Number(form.cbm || 0);
 
     if (form.transport === "Courier") {
       alert(
-        "Singapore courier is not standard. Use Air or Sea."
+        "Singapore uses Air or Sea only."
       );
       return null;
     }
 
     if (form.transport === "Air") {
-      const documentation = 35;
-      const customs = 15;
-      const transport = 210;
-      const labour = 65;
+      const terminalRate =
+        Number(
+          settings.singapore?.terminalRate ||
+          0.15
+        );
 
-      const terminal = value * 0.15;
-      const agency = value * 0.10;
+      const agencyRate =
+        Number(
+          settings.singapore?.agencyRate ||
+          0.10
+        );
 
       const total =
-        documentation +
-        customs +
-        transport +
-        labour +
-        terminal +
-        agency;
+        35 +
+        15 +
+        210 +
+        65 +
+        value * terminalRate +
+        value * agencyRate;
 
       return {
         country: "Singapore",
@@ -184,58 +265,55 @@ export default function Quotes() {
     return null;
   }
 
-  /* ---------------- DEFAULT ---------------- */
-
-  function calculateDefault(country) {
-    return {
-      country,
-      currency: "GBP",
-      duty: 0,
-      clearance: 0,
-      delivery: 0,
-      total: 0
-    };
-  }
-
   /* ---------------- MAIN CALCULATOR ---------------- */
 
   function calculate() {
     if (!selectedCustomer) {
-      alert("Please select customer");
+      alert("Select customer");
       return;
     }
 
-    const value = Number(form.value || 0);
-    const country = selectedCustomer.country;
+    const value =
+      Number(form.value || 0);
 
-    let quote;
+    const country =
+      selectedCustomer.country;
 
-    if (
-      country === "Saudi Arabia" &&
-      form.transport === "Courier"
-    ) {
-      quote = calculateSaudiCourier(value);
+    let quote = null;
+
+    if (country === "Saudi Arabia") {
+      quote = calculateSaudi(value);
+
+    } else if (country === "Qatar") {
+      if (
+        form.transport !== "Courier"
+      ) {
+        alert(
+          "Qatar uses Courier only."
+        );
+        return;
+      }
+
+      quote =
+        calculateQatar(value);
 
     } else if (
-      country === "Qatar" &&
-      form.transport === "Courier"
+      country === "Singapore"
     ) {
-      quote = calculateQatarCourier(value);
-
-    } else if (
-      country === "Qatar" &&
-      form.transport !== "Courier"
-    ) {
-      alert("Qatar only offers Courier");
-      return;
-
-    } else if (country === "Singapore") {
-      quote = calculateSingapore(value);
+      quote =
+        calculateSingapore(value);
 
       if (!quote) return;
 
     } else {
-      quote = calculateDefault(country);
+      quote = {
+        country,
+        currency: "GBP",
+        duty: 0,
+        clearance: 0,
+        delivery: 0,
+        total: 0
+      };
     }
 
     setResult(quote);
@@ -244,28 +322,49 @@ export default function Quotes() {
   /* ---------------- SAVE ---------------- */
 
   async function saveQuote() {
-    if (!result || !selectedCustomer) return;
+    if (
+      !result ||
+      !selectedCustomer
+    )
+      return;
 
-    await addDoc(collection(db, "quotes"), {
-      customerId: form.customerId,
-      customerName: selectedCustomer.name,
-      country: selectedCustomer.country,
+    await addDoc(
+      collection(db, "quotes"),
+      {
+        customerId:
+          form.customerId,
+        customerName:
+          selectedCustomer.name,
+        country:
+          selectedCustomer.country,
 
-      value: Number(form.value || 0),
-      weight: Number(form.weight || 0),
-      pieces: Number(form.pieces || 0),
-      cbm: Number(form.cbm || 0),
-      transport: form.transport,
+        value:
+          Number(form.value || 0),
+        weight:
+          Number(form.weight || 0),
+        pieces:
+          Number(form.pieces || 0),
+        cbm:
+          Number(form.cbm || 0),
+        transport:
+          form.transport,
 
-      duty: result.duty,
-      clearance: result.clearance,
-      delivery: result.delivery,
-      total: result.total,
-      currency: result.currency,
+        duty:
+          result.duty,
+        clearance:
+          result.clearance,
+        delivery:
+          result.delivery,
+        total:
+          result.total,
+        currency:
+          result.currency,
 
-      status: "draft",
-      createdAt: serverTimestamp()
-    });
+        status: "draft",
+        createdAt:
+          serverTimestamp()
+      }
+    );
 
     alert("Quote Saved");
   }
@@ -275,21 +374,26 @@ export default function Quotes() {
       <Sidebar />
 
       <div className="flex-1 p-8">
+
         <h1 className="text-3xl font-bold text-fuchsia-500 mb-8">
           Quote Engine
         </h1>
 
         <div className="grid md:grid-cols-2 gap-8">
 
-          {/* LEFT PANEL */}
+          {/* LEFT */}
 
           <div className="bg-zinc-900 p-6 rounded-2xl space-y-4">
 
             <select
               className="w-full p-3 rounded-xl bg-zinc-800"
-              value={form.customerId}
+              value={
+                form.customerId
+              }
               onChange={e =>
-                selectCustomer(e.target.value)
+                selectCustomer(
+                  e.target.value
+                )
               }
             >
               <option value="">
@@ -308,9 +412,12 @@ export default function Quotes() {
 
             {selectedCustomer && (
               <div className="bg-zinc-800 p-3 rounded-xl text-sm">
-                Destination:{" "}
+                Destination:
+                {" "}
                 <span className="text-fuchsia-400 font-semibold">
-                  {selectedCustomer.country}
+                  {
+                    selectedCustomer.country
+                  }
                 </span>
               </div>
             )}
@@ -320,7 +427,10 @@ export default function Quotes() {
               placeholder="Goods Value"
               value={form.value}
               onChange={e =>
-                update("value", e.target.value)
+                update(
+                  "value",
+                  e.target.value
+                )
               }
             />
 
@@ -329,7 +439,10 @@ export default function Quotes() {
               placeholder="Weight"
               value={form.weight}
               onChange={e =>
-                update("weight", e.target.value)
+                update(
+                  "weight",
+                  e.target.value
+                )
               }
             />
 
@@ -338,7 +451,10 @@ export default function Quotes() {
               placeholder="Pieces"
               value={form.pieces}
               onChange={e =>
-                update("pieces", e.target.value)
+                update(
+                  "pieces",
+                  e.target.value
+                )
               }
             />
 
@@ -347,38 +463,54 @@ export default function Quotes() {
               placeholder="CBM (Sea only)"
               value={form.cbm}
               onChange={e =>
-                update("cbm", e.target.value)
+                update(
+                  "cbm",
+                  e.target.value
+                )
               }
             />
 
             <select
               className="w-full p-3 rounded-xl bg-zinc-800"
-              value={form.transport}
+              value={
+                form.transport
+              }
               onChange={e =>
-                update("transport", e.target.value)
+                update(
+                  "transport",
+                  e.target.value
+                )
               }
             >
-              <option>Courier</option>
-              <option>Air</option>
-              <option>Sea</option>
+              <option>
+                Courier
+              </option>
+              <option>
+                Air
+              </option>
+              <option>
+                Sea
+              </option>
             </select>
 
             <button
-              onClick={calculate}
-              className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 p-3 rounded-xl"
+              onClick={
+                calculate
+              }
+              className="w-full bg-fuchsia-700 p-3 rounded-xl"
             >
               Calculate Quote
             </button>
 
           </div>
 
-          {/* RIGHT PANEL */}
+          {/* RIGHT */}
 
           <div className="bg-zinc-900 p-6 rounded-2xl">
 
             {!result && (
               <div className="text-zinc-400">
-                Enter values to calculate quote.
+                Enter values to calculate.
               </div>
             )}
 
@@ -386,33 +518,50 @@ export default function Quotes() {
               <div className="space-y-3">
 
                 <div className="text-sm text-zinc-400">
-                  {selectedCustomer.name} /{" "}
-                  {result.country}
+                  {
+                    selectedCustomer.name
+                  }{" "}
+                  /{" "}
+                  {
+                    result.country
+                  }
                 </div>
 
                 <Row
                   label="Duty"
-                  value={result.duty}
+                  value={
+                    result.duty
+                  }
                 />
 
                 <Row
                   label="Clearance"
-                  value={result.clearance}
+                  value={
+                    result.clearance
+                  }
                 />
 
                 <Row
                   label="Delivery"
-                  value={result.delivery}
+                  value={
+                    result.delivery
+                  }
                 />
 
                 <div className="border-t border-zinc-800 pt-4 text-3xl font-bold text-fuchsia-500">
-                  {result.currency}{" "}
-                  {Number(result.total).toFixed(2)}
+                  {
+                    result.currency
+                  }{" "}
+                  {Number(
+                    result.total
+                  ).toFixed(2)}
                 </div>
 
                 <button
-                  onClick={saveQuote}
-                  className="w-full bg-green-700 hover:bg-green-800 p-3 rounded-xl"
+                  onClick={
+                    saveQuote
+                  }
+                  className="w-full bg-green-700 p-3 rounded-xl"
                 >
                   Save Quote
                 </button>
@@ -423,17 +572,23 @@ export default function Quotes() {
           </div>
 
         </div>
+
       </div>
     </div>
   );
 }
 
-function Row({ label, value }) {
+function Row({
+  label,
+  value
+}) {
   return (
     <div className="flex justify-between border-b border-zinc-800 pb-2">
       <span>{label}</span>
       <span>
-        {Number(value || 0).toFixed(2)}
+        {Number(
+          value || 0
+        ).toFixed(2)}
       </span>
     </div>
   );
