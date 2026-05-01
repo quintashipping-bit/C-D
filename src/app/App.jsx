@@ -5,6 +5,7 @@ import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
 import Quotes from "../pages/Quotes";
 import QuoteHistory from "../pages/QuoteHistory";
+import Settings from "../pages/Settings";
 
 function Placeholder({ title }) {
   return (
@@ -38,10 +39,13 @@ function AppRoutes() {
   return (
     <Routes>
 
-      {/* Public */}
-      <Route path="/login" element={<Login />} />
+      {/* PUBLIC */}
+      <Route
+        path="/login"
+        element={<Login />}
+      />
 
-      {/* Dashboard */}
+      {/* DASHBOARD */}
       <Route
         path="/"
         element={
@@ -51,7 +55,7 @@ function AppRoutes() {
         }
       />
 
-      {/* Quotes */}
+      {/* QUOTES */}
       <Route
         path="/quotes"
         element={
@@ -61,7 +65,7 @@ function AppRoutes() {
         }
       />
 
-      {/* Quote History */}
+      {/* HISTORY */}
       <Route
         path="/history"
         element={
@@ -71,7 +75,7 @@ function AppRoutes() {
         }
       />
 
-      {/* Customers */}
+      {/* CUSTOMERS */}
       <Route
         path="/customers"
         element={
@@ -81,7 +85,7 @@ function AppRoutes() {
         }
       />
 
-      {/* Users */}
+      {/* USERS */}
       <Route
         path="/users"
         element={
@@ -91,18 +95,21 @@ function AppRoutes() {
         }
       />
 
-      {/* Settings */}
+      {/* SETTINGS */}
       <Route
         path="/settings"
         element={
           <ProtectedRoute>
-            <Placeholder title="Settings" />
+            <Settings />
           </ProtectedRoute>
         }
       />
 
-      {/* Catch All */}
-      <Route path="*" element={<Navigate to="/" />} />
+      {/* FALLBACK */}
+      <Route
+        path="*"
+        element={<Navigate to="/" />}
+      />
 
     </Routes>
   );
