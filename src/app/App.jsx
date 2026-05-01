@@ -41,7 +41,7 @@ function AppRoutes() {
       {/* Public */}
       <Route path="/login" element={<Login />} />
 
-      {/* Protected */}
+      {/* Dashboard */}
       <Route
         path="/"
         element={
@@ -51,6 +51,7 @@ function AppRoutes() {
         }
       />
 
+      {/* Quotes */}
       <Route
         path="/quotes"
         element={
@@ -60,6 +61,17 @@ function AppRoutes() {
         }
       />
 
+      {/* Quote History */}
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoute>
+            <QuoteHistory />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Customers */}
       <Route
         path="/customers"
         element={
@@ -69,6 +81,7 @@ function AppRoutes() {
         }
       />
 
+      {/* Users */}
       <Route
         path="/users"
         element={
@@ -78,6 +91,7 @@ function AppRoutes() {
         }
       />
 
+      {/* Settings */}
       <Route
         path="/settings"
         element={
@@ -86,14 +100,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/history"
-        element={
-          <ProtectedRoute>
-          <QuoteHistory />
-          </ProtectedRoute>
-  }
-/>
+
       {/* Catch All */}
       <Route path="*" element={<Navigate to="/" />} />
 
