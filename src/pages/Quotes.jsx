@@ -18,6 +18,7 @@ export default function Quotes() {
     value: "",
     weight: "",
     pieces: "",
+    cbm: "",
     transport: "Courier"
   });
 
@@ -96,17 +97,11 @@ export default function Quotes() {
 
     let legalisation = 0;
 
-    if (qatarValue <= 15000) {
-      legalisation = 650;
-    } else if (qatarValue <= 100000) {
-      legalisation = 1150;
-    } else if (qatarValue <= 250000) {
-      legalisation = 2650;
-    } else if (qatarValue <= 1000000) {
-      legalisation = 5150;
-    } else {
-      legalisation = qatarValue * 0.006;
-    }
+    if (qatarValue <= 15000) legalisation = 650;
+    else if (qatarValue <= 100000) legalisation = 1150;
+    else if (qatarValue <= 250000) legalisation = 2650;
+    else if (qatarValue <= 1000000) legalisation = 5150;
+    else legalisation = qatarValue * 0.006;
 
     const total =
       duty +
@@ -125,17 +120,68 @@ export default function Quotes() {
   /* ---------------- SINGAPORE ---------------- */
 
   function calculateSingapore(value) {
-    const clearance = 45;
-    const delivery = 40;
+    const cbm = Number(form.cbm || 0);
 
-    return {
-      country: "Singapore",
-      currency: "SGD",
-      duty: 0,
-      clearance,
-      delivery,
-      total: clearance + delivery
-    };
+    if (form.transport === "Courier") {
+      alert(
+        "Singapore courier is not standard. Use Air or Sea."
+      );
+      return null;
+    }
+
+    if (form.transport === "Air") {
+      const documentation = 35;
+      const customs = 15;
+      const transport = 210;
+      const labour = 65;
+
+      const terminal = value * 0.15;
+      const agency = value * 0.10;
+
+      const total =
+        documentation +
+        customs +
+        transport +
+        labour +
+        terminal +
+        agency;
+
+      return {
+        country: "Singapore",
+        currency: "SGD",
+        duty: 0,
+        clearance: total,
+        delivery: 0,
+        total
+      };
+    }
+
+    if (form.transport === "Sea") {
+      const total =
+        40 +
+        100 +
+        140 +
+        65 +
+        40 +
+        60 +
+        65 +
+        45 +
+        210 +
+        650 +
+        (20 * cbm) +
+        (59 * cbm);
+
+      return {
+        country: "Singapore",
+        currency: "SGD",
+        duty: 0,
+        clearance: total,
+        delivery: 0,
+        total
+      };
+    }
+
+    return null;
   }
 
   /* ---------------- DEFAULT ---------------- */
@@ -186,6 +232,8 @@ export default function Quotes() {
     } else if (country === "Singapore") {
       quote = calculateSingapore(value);
 
+      if (!quote) return;
+
     } else {
       quote = calculateDefault(country);
     }
@@ -206,6 +254,7 @@ export default function Quotes() {
       value: Number(form.value || 0),
       weight: Number(form.weight || 0),
       pieces: Number(form.pieces || 0),
+      cbm: Number(form.cbm || 0),
       transport: form.transport,
 
       duty: result.duty,
@@ -290,6 +339,15 @@ export default function Quotes() {
               value={form.pieces}
               onChange={e =>
                 update("pieces", e.target.value)
+              }
+            />
+
+            <input
+              className="w-full p-3 rounded-xl bg-zinc-800"
+              placeholder="CBM (Sea only)"
+              value={form.cbm}
+              onChange={e =>
+                update("cbm", e.target.value)
               }
             />
 
