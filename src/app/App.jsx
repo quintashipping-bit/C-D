@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "../context/AuthContext";
 import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
 import Quotes from "../pages/Quotes";
+import QuoteHistory from "../pages/QuoteHistory";
 
 function Placeholder({ title }) {
   return (
@@ -85,7 +86,14 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoute>
+          <QuoteHistory />
+          </ProtectedRoute>
+  }
+/>
       {/* Catch All */}
       <Route path="*" element={<Navigate to="/" />} />
 
