@@ -38,11 +38,13 @@ export default function Quotes() {
   }, []);
 
   async function loadCustomers() {
-    const snap = await getDocs(collection(db, "customers"));
+    const snap = await getDocs(
+      collection(db, "customers")
+    );
 
-    const data = snap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
+    const data = snap.docs.map(d => ({
+      id: d.id,
+      ...d.data()
     }));
 
     setCustomers(data);
@@ -97,126 +99,239 @@ export default function Quotes() {
     setResult(null);
   }
 
-  /* ---------------- SAUDI ---------------- */
+  /* =====================================================
+     AUSTRALIA LOOKUPS
+  ===================================================== */
+
+  function getAustraliaZone(name) {
+    const zones = {
+      "AGL MACQUARIE GENERATION": "NN1",
+      "AGL TORRENS ISLAND POWER": "SS1",
+      "AMPOL LYTTON REFINERY": "Q01",
+      "ARROW ENERGY": "Q04",
+      "BEACH ENERGY": "VV1",
+      "BHP BILLITON - OLYMPIC DAM": "SS1",
+      "BLUEWATERS POWER STATION": "VV2",
+      "CEMENT AUSTRALIA (TARONG)": "Q01",
+      "CS ENERGY (CALLIDE DAM)": "Q04",
+      "CS ENERGY KOGAN CREEK": "Q01",
+      "DIAMANTINA POWER": "Q04",
+      "ENERGYAUSTRALIA (YALLOURN)": "VV2",
+      "ENGIE HAZELWOOD": "VV1",
+      "GLENCORE (MOUNT ISA)": "Q04",
+      "NRG GLADSTONE": "Q02",
+      "RIO TINTO ALUMINIUM YARWUN": "Q02",
+      "YARA PILBARA FERTILISERS": "VV1"
+    };
+
+    return (
+      zones[name?.toUpperCase()] ||
+      "Q01"
+    );
+  }
+
+  function getAustraliaDelivery(
+    zone,
+    weight
+  ) {
+    const table = {
+      Q01: {
+        base: 17.91,
+        perKg: 0.4158
+      },
+      Q02: {
+        base: 23.39,
+        perKg: 0.8997
+      },
+      Q04: {
+        base: 26.39,
+        perKg: 1.7196
+      },
+      SS1: {
+        base: 48.52,
+        perKg: 2.1312
+      },
+      NN1: {
+        base: 60.07,
+        perKg: 2.8069
+      },
+      VV1: {
+        base: 77.40,
+        perKg: 4.6782
+      },
+      VV2: {
+        base: 104.37,
+        perKg: 28.3106
+      }
+    };
+
+    const row =
+      table[zone] ||
+      table.Q01;
+
+    return (
+      row.base +
+      weight * row.perKg
+    );
+  }
+
+  /* =====================================================
+     SAUDI
+  ===================================================== */
 
   function calculateSaudi(value) {
     const dutyRate =
-      Number(settings.saudi?.dutyRate || 0.05);
+      Number(
+        settings.saudi?.dutyRate ||
+        0.05
+      );
 
     const percentage =
       Number(
-        settings.saudi?.percentage || 0.003464
+        settings.saudi?.percentage ||
+        0.003464
       );
 
-    const minMerchandise =
+    const min =
       Number(
-        settings.saudi?.minMerchandise || 27.75
+        settings.saudi?.minMerchandise ||
+        27.75
       );
 
-    const maxMerchandise =
+    const max =
       Number(
-        settings.saudi?.maxMerchandise || 538.4
+        settings.saudi?.maxMerchandise ||
+        538.4
       );
 
-    const taxPaidFee =
+    const taxPaid =
       Number(
-        settings.saudi?.taxPaidFee || 25
+        settings.saudi?.taxPaidFee ||
+        25
       );
 
-    const duty = value * dutyRate;
+    const duty =
+      value * dutyRate;
 
     let clearance =
       value * percentage;
 
-    if (clearance < minMerchandise) {
-      clearance = minMerchandise;
-    }
+    if (clearance < min)
+      clearance = min;
 
-    if (clearance > maxMerchandise) {
-      clearance = maxMerchandise;
-    }
+    if (clearance > max)
+      clearance = max;
 
     const total =
       duty +
       clearance +
-      taxPaidFee;
+      taxPaid;
 
     return {
-      country: "Saudi Arabia",
+      country:
+        "Saudi Arabia",
       currency: "GBP",
       duty,
       clearance,
-      delivery: taxPaidFee,
+      delivery: taxPaid,
       total
     };
   }
 
-  /* ---------------- QATAR ---------------- */
+  /* =====================================================
+     QATAR
+  ===================================================== */
 
   function calculateQatar(value) {
     const dutyRate =
-      Number(settings.qatar?.dutyRate || 0.05);
+      Number(
+        settings.qatar?.dutyRate ||
+        0.05
+      );
 
-    const fxRate =
-      Number(settings.qatar?.fxRate || 4.65);
+    const fx =
+      Number(
+        settings.qatar?.fxRate ||
+        4.65
+      );
 
-    const duty = value * dutyRate;
+    const duty =
+      value * dutyRate;
 
-    const qatarValue =
-      value * fxRate;
+    const qarValue =
+      value * fx;
 
-    let legalisation = 0;
+    let legal = 0;
 
-    if (qatarValue <= 15000)
-      legalisation = 650;
-    else if (qatarValue <= 100000)
-      legalisation = 1150;
-    else if (qatarValue <= 250000)
-      legalisation = 2650;
-    else if (qatarValue <= 1000000)
-      legalisation = 5150;
+    if (qarValue <= 15000)
+      legal = 650;
+    else if (
+      qarValue <= 100000
+    )
+      legal = 1150;
+    else if (
+      qarValue <= 250000
+    )
+      legal = 2650;
+    else if (
+      qarValue <= 1000000
+    )
+      legal = 5150;
     else
-      legalisation =
-        qatarValue * 0.006;
-
-    const total =
-      duty +
-      legalisation;
+      legal =
+        qarValue * 0.006;
 
     return {
       country: "Qatar",
       currency: "QAR",
       duty,
-      clearance: legalisation,
+      clearance: legal,
       delivery: 0,
-      total
+      total:
+        duty + legal
     };
   }
 
-  /* ---------------- SINGAPORE ---------------- */
+  /* =====================================================
+     SINGAPORE
+  ===================================================== */
 
-  function calculateSingapore(value) {
+  function calculateSingapore(
+    value
+  ) {
     const cbm =
-      Number(form.cbm || 0);
+      Number(
+        form.cbm || 0
+      );
 
-    if (form.transport === "Courier") {
+    if (
+      form.transport ===
+      "Courier"
+    ) {
       alert(
         "Singapore uses Air or Sea only."
       );
       return null;
     }
 
-    if (form.transport === "Air") {
-      const terminalRate =
+    if (
+      form.transport ===
+      "Air"
+    ) {
+      const terminal =
         Number(
-          settings.singapore?.terminalRate ||
-          0.15
+          settings
+            .singapore
+            ?.terminalRate ||
+            0.15
         );
 
-      const agencyRate =
+      const agency =
         Number(
-          settings.singapore?.agencyRate ||
-          0.10
+          settings
+            .singapore
+            ?.agencyRate ||
+            0.10
         );
 
       const total =
@@ -224,20 +339,28 @@ export default function Quotes() {
         15 +
         210 +
         65 +
-        value * terminalRate +
-        value * agencyRate;
+        value *
+          terminal +
+        value *
+          agency;
 
       return {
-        country: "Singapore",
-        currency: "SGD",
+        country:
+          "Singapore",
+        currency:
+          "SGD",
         duty: 0,
-        clearance: total,
+        clearance:
+          total,
         delivery: 0,
         total
       };
     }
 
-    if (form.transport === "Sea") {
+    if (
+      form.transport ===
+      "Sea"
+    ) {
       const total =
         40 +
         100 +
@@ -249,14 +372,16 @@ export default function Quotes() {
         45 +
         210 +
         650 +
-        (20 * cbm) +
-        (59 * cbm);
+        cbm * 79;
 
       return {
-        country: "Singapore",
-        currency: "SGD",
+        country:
+          "Singapore",
+        currency:
+          "SGD",
         duty: 0,
-        clearance: total,
+        clearance:
+          total,
         delivery: 0,
         total
       };
@@ -265,50 +390,209 @@ export default function Quotes() {
     return null;
   }
 
-  /* ---------------- MAIN CALCULATOR ---------------- */
+  /* =====================================================
+     AUSTRALIA
+  ===================================================== */
+
+  function calculateAustralia(
+    value
+  ) {
+    const weight =
+      Number(
+        form.weight || 0
+      );
+
+    const cbm =
+      Number(
+        form.cbm || 0
+      );
+
+    const zone =
+      getAustraliaZone(
+        selectedCustomer.name
+      );
+
+    const duty =
+      value * 0.05;
+
+    const gst =
+      (value + duty) *
+      0.10;
+
+    const local =
+      getAustraliaDelivery(
+        zone,
+        weight
+      );
+
+    if (
+      form.transport ===
+      "Courier"
+    ) {
+      const clearance =
+        190 +
+        88 +
+        value * 0.03;
+
+      const total =
+        clearance +
+        duty +
+        gst +
+        local;
+
+      return {
+        country:
+          "Australia",
+        currency:
+          "AUD",
+        zone,
+        duty,
+        clearance,
+        delivery:
+          local,
+        total
+      };
+    }
+
+    if (
+      form.transport ===
+      "Air"
+    ) {
+      const clearance =
+        201 +
+        90 +
+        152 +
+        80 +
+        130 +
+        10 +
+        20 +
+        45 +
+        85;
+
+      const total =
+        clearance +
+        duty +
+        gst +
+        local;
+
+      return {
+        country:
+          "Australia",
+        currency:
+          "AUD",
+        zone,
+        duty,
+        clearance,
+        delivery:
+          local,
+        total
+      };
+    }
+
+    if (
+      form.transport ===
+      "Sea"
+    ) {
+      const clearance =
+        95 +
+        20 +
+        50 +
+        45 +
+        25 +
+        125 +
+        45 +
+        49 +
+        cbm * 20;
+
+      const total =
+        clearance +
+        duty +
+        gst +
+        local;
+
+      return {
+        country:
+          "Australia",
+        currency:
+          "AUD",
+        zone,
+        duty,
+        clearance,
+        delivery:
+          local,
+        total
+      };
+    }
+
+    return null;
+  }
+
+  /* =====================================================
+     MAIN CALCULATE
+  ===================================================== */
 
   function calculate() {
-    if (!selectedCustomer) {
-      alert("Select customer");
+    if (
+      !selectedCustomer
+    ) {
+      alert(
+        "Select customer"
+      );
       return;
     }
 
     const value =
-      Number(form.value || 0);
+      Number(
+        form.value || 0
+      );
 
     const country =
       selectedCustomer.country;
 
-    let quote = null;
+    let quote =
+      null;
 
-    if (country === "Saudi Arabia") {
-      quote = calculateSaudi(value);
-
-    } else if (country === "Qatar") {
-      if (
-        form.transport !== "Courier"
-      ) {
-        alert(
-          "Qatar uses Courier only."
-        );
-        return;
-      }
-
-      quote =
-        calculateQatar(value);
-
-    } else if (
-      country === "Singapore"
+    if (
+      country ===
+      "Saudi Arabia"
     ) {
       quote =
-        calculateSingapore(value);
+        calculateSaudi(
+          value
+        );
 
-      if (!quote) return;
+    } else if (
+      country ===
+      "Qatar"
+    ) {
+      quote =
+        calculateQatar(
+          value
+        );
+
+    } else if (
+      country ===
+      "Singapore"
+    ) {
+      quote =
+        calculateSingapore(
+          value
+        );
+
+    } else if (
+      country ===
+      "Australia"
+    ) {
+      quote =
+        calculateAustralia(
+          value
+        );
 
     } else {
       quote = {
         country,
-        currency: "GBP",
+        currency:
+          "GBP",
         duty: 0,
         clearance: 0,
         delivery: 0,
@@ -316,10 +600,15 @@ export default function Quotes() {
       };
     }
 
-    setResult(quote);
+    if (quote)
+      setResult(
+        quote
+      );
   }
 
-  /* ---------------- SAVE ---------------- */
+  /* =====================================================
+     SAVE
+  ===================================================== */
 
   async function saveQuote() {
     if (
@@ -329,26 +618,38 @@ export default function Quotes() {
       return;
 
     await addDoc(
-      collection(db, "quotes"),
+      collection(
+        db,
+        "quotes"
+      ),
       {
         customerId:
           form.customerId,
         customerName:
           selectedCustomer.name,
         country:
-          selectedCustomer.country,
-
+          result.country,
         value:
-          Number(form.value || 0),
+          Number(
+            form.value
+          ),
         weight:
-          Number(form.weight || 0),
+          Number(
+            form.weight
+          ),
         pieces:
-          Number(form.pieces || 0),
+          Number(
+            form.pieces
+          ),
         cbm:
-          Number(form.cbm || 0),
+          Number(
+            form.cbm
+          ),
         transport:
           form.transport,
-
+        zone:
+          result.zone ||
+          "",
         duty:
           result.duty,
         clearance:
@@ -359,15 +660,19 @@ export default function Quotes() {
           result.total,
         currency:
           result.currency,
-
-        status: "draft",
         createdAt:
           serverTimestamp()
       }
     );
 
-    alert("Quote Saved");
+    alert(
+      "Quote Saved"
+    );
   }
+
+  /* =====================================================
+     UI
+  ===================================================== */
 
   return (
     <div className="flex bg-zinc-950 text-white min-h-screen">
@@ -381,7 +686,7 @@ export default function Quotes() {
 
         <div className="grid md:grid-cols-2 gap-8">
 
-          {/* LEFT */}
+          {/* FORM */}
 
           <div className="bg-zinc-900 p-6 rounded-2xl space-y-4">
 
@@ -400,32 +705,30 @@ export default function Quotes() {
                 Select Customer
               </option>
 
-              {customers.map(c => (
-                <option
-                  key={c.id}
-                  value={c.id}
-                >
-                  {c.name}
-                </option>
-              ))}
+              {customers.map(
+                c => (
+                  <option
+                    key={
+                      c.id
+                    }
+                    value={
+                      c.id
+                    }
+                  >
+                    {
+                      c.name
+                    }
+                  </option>
+                )
+              )}
             </select>
-
-            {selectedCustomer && (
-              <div className="bg-zinc-800 p-3 rounded-xl text-sm">
-                Destination:
-                {" "}
-                <span className="text-fuchsia-400 font-semibold">
-                  {
-                    selectedCustomer.country
-                  }
-                </span>
-              </div>
-            )}
 
             <input
               className="w-full p-3 rounded-xl bg-zinc-800"
               placeholder="Goods Value"
-              value={form.value}
+              value={
+                form.value
+              }
               onChange={e =>
                 update(
                   "value",
@@ -437,7 +740,9 @@ export default function Quotes() {
             <input
               className="w-full p-3 rounded-xl bg-zinc-800"
               placeholder="Weight"
-              value={form.weight}
+              value={
+                form.weight
+              }
               onChange={e =>
                 update(
                   "weight",
@@ -449,7 +754,9 @@ export default function Quotes() {
             <input
               className="w-full p-3 rounded-xl bg-zinc-800"
               placeholder="Pieces"
-              value={form.pieces}
+              value={
+                form.pieces
+              }
               onChange={e =>
                 update(
                   "pieces",
@@ -460,8 +767,10 @@ export default function Quotes() {
 
             <input
               className="w-full p-3 rounded-xl bg-zinc-800"
-              placeholder="CBM (Sea only)"
-              value={form.cbm}
+              placeholder="CBM"
+              value={
+                form.cbm
+              }
               onChange={e =>
                 update(
                   "cbm",
@@ -504,28 +813,44 @@ export default function Quotes() {
 
           </div>
 
-          {/* RIGHT */}
+          {/* RESULT */}
 
           <div className="bg-zinc-900 p-6 rounded-2xl">
 
             {!result && (
               <div className="text-zinc-400">
-                Enter values to calculate.
+                Enter values
+                to
+                calculate.
               </div>
             )}
 
             {result && (
               <div className="space-y-3">
 
-                <div className="text-sm text-zinc-400">
+                <div className="text-zinc-400 text-sm">
                   {
                     selectedCustomer.name
-                  }{" "}
-                  /{" "}
+                  }
+                </div>
+
+                <div>
+                  Country:
+                  {" "}
                   {
                     result.country
                   }
                 </div>
+
+                {result.zone && (
+                  <div>
+                    Zone:
+                    {" "}
+                    {
+                      result.zone
+                    }
+                  </div>
+                )}
 
                 <Row
                   label="Duty"
@@ -554,7 +879,9 @@ export default function Quotes() {
                   }{" "}
                   {Number(
                     result.total
-                  ).toFixed(2)}
+                  ).toFixed(
+                    2
+                  )}
                 </div>
 
                 <button
@@ -584,7 +911,10 @@ function Row({
 }) {
   return (
     <div className="flex justify-between border-b border-zinc-800 pb-2">
-      <span>{label}</span>
+      <span>
+        {label}
+      </span>
+
       <span>
         {Number(
           value || 0
