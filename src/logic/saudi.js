@@ -1,39 +1,26 @@
-export default function calculateSaudi(form, settings) {
+export default function calculateSaudi(form) {
   const value = Number(form.value || 0);
-  const weight = Number(form.weight || 0);
 
-  const duty = value * Number(settings.dutyRate || 0.05);
+  const duty = value * 0.05;
 
-  let clearance = 0;
+  let merchandise = value * 0.003464;
 
-  if (form.transport === "Courier") {
-    clearance = Number(settings.courierClearance || 35);
-  }
+  if (merchandise < 27.75) merchandise = 27.75;
+  if (merchandise > 538.4) merchandise = 538.4;
 
-  if (form.transport === "Air") {
-    clearance = Number(settings.airClearance || 55);
-  }
+  const dutyTaxPaidFee = 25;
 
-  if (form.transport === "Sea") {
-    clearance = Number(settings.seaClearance || 75);
-  }
-
-  const delivery =
-    Number(settings.deliveryBase || 20) +
-    weight * 2;
-
-  let total = duty + clearance + delivery;
-
-  if (total < Number(settings.minimumCharge || 45)) {
-    total = Number(settings.minimumCharge || 45);
-  }
+  const total =
+    duty +
+    merchandise +
+    dutyTaxPaidFee;
 
   return {
     country: "Saudi Arabia",
-    currency: settings.currency || "GBP",
+    currency: "GBP",
     duty,
-    clearance,
-    delivery,
+    clearance: merchandise,
+    delivery: dutyTaxPaidFee,
     total
   };
 }
