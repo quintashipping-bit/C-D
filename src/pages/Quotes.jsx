@@ -59,6 +59,8 @@ export default function Quotes() {
     setResult(null);
   }
 
+  /* ---------------- SAUDI ---------------- */
+
   function calculateSaudiCourier(value) {
     const duty = value * 0.05;
 
@@ -84,37 +86,61 @@ export default function Quotes() {
     };
   }
 
-  function calculateQatar(value) {
+  /* ---------------- QATAR ---------------- */
+
+  function calculateQatarCourier(value) {
     const duty = value * 0.05;
-    const clearance = 35;
-    const delivery = 30;
+
+    const fxRate = 4.65;
+    const qatarValue = value * fxRate;
+
+    let legalisation = 0;
+
+    if (qatarValue <= 15000) {
+      legalisation = 650;
+    } else if (qatarValue <= 100000) {
+      legalisation = 1150;
+    } else if (qatarValue <= 250000) {
+      legalisation = 2650;
+    } else if (qatarValue <= 1000000) {
+      legalisation = 5150;
+    } else {
+      legalisation = qatarValue * 0.006;
+    }
+
+    const total =
+      duty +
+      legalisation;
 
     return {
       country: "Qatar",
-      currency: "GBP",
+      currency: "QAR",
       duty,
-      clearance,
-      delivery,
-      total: duty + clearance + delivery
+      clearance: legalisation,
+      delivery: 0,
+      total
     };
   }
 
+  /* ---------------- SINGAPORE ---------------- */
+
   function calculateSingapore(value) {
-    const duty = 0;
     const clearance = 45;
     const delivery = 40;
 
     return {
       country: "Singapore",
       currency: "SGD",
-      duty,
+      duty: 0,
       clearance,
       delivery,
       total: clearance + delivery
     };
   }
 
-  function calculateDefault(value, country) {
+  /* ---------------- DEFAULT ---------------- */
+
+  function calculateDefault(country) {
     return {
       country,
       currency: "GBP",
@@ -124,6 +150,8 @@ export default function Quotes() {
       total: 0
     };
   }
+
+  /* ---------------- MAIN CALCULATOR ---------------- */
 
   function calculate() {
     if (!selectedCustomer) {
@@ -141,16 +169,31 @@ export default function Quotes() {
       form.transport === "Courier"
     ) {
       quote = calculateSaudiCourier(value);
-    } else if (country === "Qatar") {
-      quote = calculateQatar(value);
+
+    } else if (
+      country === "Qatar" &&
+      form.transport === "Courier"
+    ) {
+      quote = calculateQatarCourier(value);
+
+    } else if (
+      country === "Qatar" &&
+      form.transport !== "Courier"
+    ) {
+      alert("Qatar only offers Courier");
+      return;
+
     } else if (country === "Singapore") {
       quote = calculateSingapore(value);
+
     } else {
-      quote = calculateDefault(value, country);
+      quote = calculateDefault(country);
     }
 
     setResult(quote);
   }
+
+  /* ---------------- SAVE ---------------- */
 
   async function saveQuote() {
     if (!result || !selectedCustomer) return;
@@ -159,6 +202,7 @@ export default function Quotes() {
       customerId: form.customerId,
       customerName: selectedCustomer.name,
       country: selectedCustomer.country,
+
       value: Number(form.value || 0),
       weight: Number(form.weight || 0),
       pieces: Number(form.pieces || 0),
@@ -187,6 +231,8 @@ export default function Quotes() {
         </h1>
 
         <div className="grid md:grid-cols-2 gap-8">
+
+          {/* LEFT PANEL */}
 
           <div className="bg-zinc-900 p-6 rounded-2xl space-y-4">
 
@@ -267,6 +313,8 @@ export default function Quotes() {
             </button>
 
           </div>
+
+          {/* RIGHT PANEL */}
 
           <div className="bg-zinc-900 p-6 rounded-2xl">
 
