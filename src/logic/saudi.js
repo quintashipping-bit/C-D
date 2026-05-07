@@ -1,26 +1,30 @@
-export default function calculateSaudi(form) {
-  const value = Number(form.value || 0);
+export function calculateSaudi({
+  weight,
+  courierRate,
+  minimumCharge,
+  maximumCharge,
+  exportRate,
+}) {
 
-  const duty = value * 0.05;
+  let courierCharge = weight * courierRate;
 
-  let merchandise = value * 0.003464;
+  // Excel exact logic
 
-  if (merchandise < 27.75) merchandise = 27.75;
-  if (merchandise > 538.4) merchandise = 538.4;
+  if (courierCharge <= minimumCharge) {
+    courierCharge = minimumCharge;
+  }
 
-  const dutyTaxPaidFee = 25;
+  if (courierCharge > maximumCharge) {
+    courierCharge = maximumCharge;
+  }
 
-  const total =
-    duty +
-    merchandise +
-    dutyTaxPaidFee;
+  const exportCharge = weight * exportRate;
+
+  const total = courierCharge + exportCharge;
 
   return {
-    country: "Saudi Arabia",
-    currency: "GBP",
-    duty,
-    clearance: merchandise,
-    delivery: dutyTaxPaidFee,
-    total
+    courierCharge,
+    exportCharge,
+    total,
   };
 }
