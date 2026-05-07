@@ -1,30 +1,91 @@
+// src/logic/saudi.js
+
+/* =========================================================
+   SAUDI ARABIA ENGINE
+   EXCEL MIRROR VERSION
+========================================================= */
+
 export function calculateSaudi({
-  weight,
-  courierRate,
-  minimumCharge,
-  maximumCharge,
-  exportRate,
+  value = 0,
+  weight = 0,
+  pieces = 0,
+  cbm = 0,
+  transport = "Air"
 }) {
+  /*
+    Duty
+    Excel:
+    =Value * 5%
+  */
 
-  let courierCharge = weight * courierRate;
+  const duty =
+    value * 0.05;
 
-  // Excel exact logic
+  /*
+    Clearance
+    Excel:
+    =Value * 0.3464%
+  */
 
-  if (courierCharge <= minimumCharge) {
-    courierCharge = minimumCharge;
+  let clearance =
+    value * 0.003464;
+
+  /*
+    Minimum
+  */
+
+  if (clearance < 27.75) {
+    clearance = 27.75;
   }
 
-  if (courierCharge > maximumCharge) {
-    courierCharge = maximumCharge;
+  /*
+    Maximum
+  */
+
+  if (clearance > 538.4) {
+    clearance = 538.4;
   }
 
-  const exportCharge = weight * exportRate;
+  /*
+    Delivery
+  */
 
-  const total = courierCharge + exportCharge;
+  const delivery = 25;
+
+  /*
+    Total
+  */
+
+  const total =
+    duty +
+    clearance +
+    delivery;
 
   return {
-    courierCharge,
-    exportCharge,
+    country: "SAUDI ARABIA",
+
+    currency: "SAR",
+
+    transport,
+
+    zone: null,
+
+    duty,
+
+    clearance,
+
+    delivery,
+
     total,
+
+    breakdown: {
+      invoiceValue: value,
+
+      duty,
+
+      clearance,
+
+      delivery
+    }
   };
 }
