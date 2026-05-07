@@ -1,45 +1,107 @@
+// src/logic/qatar.js
+
+/* =========================================================
+   QATAR ENGINE
+   EXCEL MIRROR VERSION
+========================================================= */
+
 export function calculateQatar({
-  weight,
-  courierRate,
-  minimumCharge,
-  maximumCharge,
-  exportRate,
-  customsValue,
+  value = 0,
+  weight = 0,
+  pieces = 0,
+  cbm = 0,
+  transport = "Air"
 }) {
+  /*
+    Duty
+    Excel:
+    =Value * 5%
+  */
 
-  let courierCharge = weight * courierRate;
+  const duty =
+    value * 0.05;
 
-  if (courierCharge > maximumCharge) {
-    courierCharge = maximumCharge;
+  /*
+    GBP -> QAR
+    Excel fixed rate
+  */
+
+  const qarValue =
+    value * 4.65;
+
+  /*
+    Legalisation
+    Excel brackets
+  */
+
+  let legalisation = 0;
+
+  if (qarValue <= 15000) {
+    legalisation = 650;
   }
 
-  if (courierCharge < minimumCharge) {
-    courierCharge = minimumCharge;
+  else if (qarValue <= 100000) {
+    legalisation = 1150;
   }
 
-  const exportCharge = weight * exportRate;
-
-  let customsCharge = 0;
-
-  if (customsValue < 15000) {
-    customsCharge = 250;
-  } else if (customsValue < 100000) {
-    customsCharge = 500;
-  } else if (customsValue < 250000) {
-    customsCharge = 750;
-  } else {
-    customsCharge = customsValue * 0.006;
+  else if (qarValue <= 250000) {
+    legalisation = 2650;
   }
+
+  else if (qarValue <= 1000000) {
+    legalisation = 5150;
+  }
+
+  else {
+    legalisation =
+      qarValue * 0.006;
+  }
+
+  /*
+    Clearance
+  */
+
+  const clearance =
+    legalisation;
+
+  /*
+    Delivery
+  */
+
+  const delivery = 0;
+
+  /*
+    Total
+  */
 
   const total =
-    courierCharge +
-    exportCharge +
-    customsCharge;
+    duty +
+    clearance +
+    delivery;
 
   return {
-    courierCharge,
-    exportCharge,
-    customsCharge,
+    country: "QATAR",
+
+    currency: "QAR",
+
+    transport,
+
+    zone: null,
+
+    duty,
+
+    clearance,
+
+    delivery,
+
     total,
+
+    breakdown: {
+      invoiceValue: value,
+
+      qarValue,
+
+      legalisation
+    }
   };
 }
