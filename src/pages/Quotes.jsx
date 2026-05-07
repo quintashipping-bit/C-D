@@ -1,88 +1,83 @@
 import { useEffect, useState } from "react";
+
 import {
   collection,
   getDocs,
   addDoc,
-  serverTimestamp,
-  doc,
-  getDoc
+  serverTimestamp
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import Sidebar from "../components/Sidebar";
 
-/* ================================
+/* =========================================================
    LOGIC ENGINES
-================================ */
+========================================================= */
 
 import { calculateAustralia } from "../logic/australia";
+
 import { calculateSouthAfrica } from "../logic/southAfricaLogic";
-import { calculateQatar } from "../logic/qatar";
+
 import { calculateSaudi } from "../logic/saudi";
+
+import { calculateQatar } from "../logic/qatar";
+
 import { calculateSingapore } from "../logic/singapore";
 
-/* ================================
-   CUSTOMER MATRIX
-================================ */
-
-import { customerRates } from "../data/customerRates";
+/* =========================================================
+   COMPONENT
+========================================================= */
 
 export default function Quotes() {
   const [customers, setCustomers] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
-  const [settings, setSettings] = useState({
-    saudi: null,
-    qatar: null,
-    singapore: null
-  });
+  const [selectedCustomer, setSelectedCustomer] =
+    useState(null);
+
+  const [result, setResult] =
+    useState(null);
 
   const [form, setForm] = useState({
     customerId: "",
+
     value: "",
+
     weight: "",
+
     pieces: "",
+
     cbm: "",
-    transport: "Courier"
+
+    transport: "Air"
   });
 
-  const [result, setResult] = useState(null);
-
-  /* =========================================
-     LOAD DATA
-  ========================================= */
+  /* =====================================================
+     LOAD CUSTOMERS
+  ===================================================== */
 
   useEffect(() => {
     loadCustomers();
-    loadSettings();
   }, []);
 
   async function loadCustomers() {
-    const snap = await getDocs(collection(db, "customers"));
+    const snap =
+      await getDocs(
+        collection(db, "customers")
+      );
 
-    setCustomers(
-      snap.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      }))
-    );
+    const rows =
+      snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+    setCustomers(rows);
   }
 
-  async function loadSettings() {
-    const saudiSnap = await getDoc(doc(db, "settings", "saudi"));
-    const qatarSnap = await getDoc(doc(db, "settings", "qatar"));
-    const singaporeSnap = await getDoc(doc(db, "settings", "singapore"));
-
-    setSettings({
-      saudi: saudiSnap.exists() ? saudiSnap.data() : null,
-      qatar: qatarSnap.exists() ? qatarSnap.data() : null,
-      singapore: singaporeSnap.exists() ? singaporeSnap.data() : null
-    });
-  }
-
-  /* =========================================
-     FORM UPDATE
-  ========================================= */
+  /* =====================================================
+     UPDATE FORM
+  ===================================================== */
 
   function update(name, value) {
     setForm(prev => ({
@@ -91,14 +86,15 @@ export default function Quotes() {
     }));
   }
 
-  /* =========================================
-     CUSTOMER SELECT
-  ========================================= */
+  /* =====================================================
+     SELECT CUSTOMER
+  ===================================================== */
 
   function selectCustomer(id) {
-    const customer = customers.find(c => c.id === id) || null;
+    const customer =
+      customers.find(c => c.id === id);
 
-    setSelectedCustomer(customer);
+    setSelectedCustomer(customer || null);
 
     setForm(prev => ({
       ...prev,
@@ -108,178 +104,17 @@ export default function Quotes() {
     setResult(null);
   }
 
-  /* =========================================
-     CUSTOMER MATRIX LOOKUP
-  ========================================= */
-
-  function getCustomerRate(customerName) {
-    if (!customerName) return null;
-
-    return customerRates.find(
-      c =>
-        c.customer?.trim()?.toLowerCase() ===
-        customerName?.trim()?.toLowerCase()
-    );
-  }
-
-  /* =========================================
+  /* =====================================================
      MAIN CALCULATE
-  ========================================= */
+  ===================================================== */
 
   function calculate() {
     if (!selectedCustomer) {
-      alert("Select customer");
+      alert("Please select customer");
       return;
     }
 
-    const value = Number(form.value || 0);
-    const weight = Number(form.weight || 0);
-    const pieces = Number(form.pieces || 0);
-    const cbm = Number(form.cbm || 0);
-
-    const transport = form.transport;
-
-    const customerName =
-      selectedCustomer.name ||
-      selectedCustomer.customer ||
-      "";
-
-    const country =
-      selectedCustomer.country ||
-      "";
-
-    const customerRate =
-      getCustomerRate(customerName);
-
-    let quote = null;
-
-    /* =====================================
-       AUSTRALIA
-    ===================================== */
-
-    if (
-      country.toUpperCase() === "AUSTRALIA"
-    ) {
-      quote = calculateAustralia({
-        value,
-        weight,
-        pieces,
-        cbm,
-        transport,
-        customerName,
-        customerRate
-      });
-    }
-
-    /* =====================================
-       SOUTH AFRICA
-    ===================================== */
-
-    else if (
-      country.toUpperCase() === "SOUTH AFRICA"
-    ) {
-      quote = calculateSouthAfrica({
-        value,
-        weight,
-        pieces,
-        cbm,
-        transport,
-        customerName,
-        customerRate
-      });
-    }
-
-    /* =====================================
-       QATAR
-    ===================================== */
-
-    else if (
-      country.toUpperCase() === "QATAR"
-    ) {
-      quote = calculateQatar({
-        value,
-        weight,
-        pieces,
-        cbm,
-        transport,
-        customerName,
-        customerRate,
-        settings: settings.qatar
-      });
-    }
-
-    /* =====================================
-       SAUDI
-    ===================================== */
-
-    else if (
-      country.toUpperCase() === "SAUDI ARABIA"
-    ) {
-      quote = calculateSaudi({
-        value,
-        weight,
-        pieces,
-        cbm,
-        transport,
-        customerName,
-        customerRate,
-        settings: settings.saudi
-      });
-    }
-
-    /* =====================================
-       SINGAPORE
-    ===================================== */
-
-    else if (
-      country.toUpperCase() === "SINGAPORE"
-    ) {
-      quote = calculateSingapore({
-        value,
-        weight,
-        pieces,
-        cbm,
-        transport,
-        customerName,
-        customerRate,
-        settings: settings.singapore
-      });
-    }
-
-    /* =====================================
-       FALLBACK
-    ===================================== */
-
-    else {
-      quote = {
-        country,
-        currency: "GBP",
-        duty: 0,
-        clearance: 0,
-        delivery: 0,
-        total: 0
-      };
-    }
-
-    setResult(quote);
-  }
-
-  /* =========================================
-     SAVE QUOTE
-  ========================================= */
-
-  async function saveQuote() {
-    if (!result || !selectedCustomer) return;
-
-    await addDoc(collection(db, "quotes"), {
-      customerId: form.customerId,
-
-      customerName:
-        selectedCustomer.name,
-
-      country:
-        result.country,
-
+    const payload = {
       value:
         Number(form.value || 0),
 
@@ -295,40 +130,142 @@ export default function Quotes() {
       transport:
         form.transport,
 
-      zone:
-        result.zone || "",
+      customerName:
+        selectedCustomer.name
+    };
 
-      duty:
-        result.duty || 0,
+    const country =
+      selectedCustomer.country
+        ?.trim()
+        ?.toUpperCase();
 
-      clearance:
-        result.clearance || 0,
+    let quote = null;
 
-      delivery:
-        result.delivery || 0,
+    /* ===================================================
+       ROUTING
+    =================================================== */
 
-      total:
-        result.total || 0,
+    switch (country) {
 
-      currency:
-        result.currency || "GBP",
+      case "AUSTRALIA":
+        quote =
+          calculateAustralia(payload);
+        break;
 
-      breakdown:
-        result.breakdown || {},
+      case "SOUTH AFRICA":
+        quote =
+          calculateSouthAfrica(payload);
+        break;
 
-      createdAt:
-        serverTimestamp()
-    });
+      case "SAUDI ARABIA":
+        quote =
+          calculateSaudi(payload);
+        break;
+
+      case "QATAR":
+        quote =
+          calculateQatar(payload);
+        break;
+
+      case "SINGAPORE":
+        quote =
+          calculateSingapore(payload);
+        break;
+
+      default:
+        quote = {
+          country,
+
+          currency: "GBP",
+
+          duty: 0,
+
+          clearance: 0,
+
+          delivery: 0,
+
+          total: 0,
+
+          error:
+            "No engine configured"
+        };
+    }
+
+    setResult(quote);
+  }
+
+  /* =====================================================
+     SAVE QUOTE
+  ===================================================== */
+
+  async function saveQuote() {
+    if (!result || !selectedCustomer) {
+      return;
+    }
+
+    await addDoc(
+      collection(db, "quotes"),
+      {
+        customerId:
+          selectedCustomer.id,
+
+        customerName:
+          selectedCustomer.name,
+
+        country:
+          result.country,
+
+        transport:
+          form.transport,
+
+        value:
+          Number(form.value || 0),
+
+        weight:
+          Number(form.weight || 0),
+
+        pieces:
+          Number(form.pieces || 0),
+
+        cbm:
+          Number(form.cbm || 0),
+
+        zone:
+          result.zone || "",
+
+        duty:
+          Number(result.duty || 0),
+
+        clearance:
+          Number(result.clearance || 0),
+
+        delivery:
+          Number(result.delivery || 0),
+
+        total:
+          Number(result.total || 0),
+
+        currency:
+          result.currency || "GBP",
+
+        breakdown:
+          result.breakdown || {},
+
+        createdAt:
+          serverTimestamp()
+      }
+    );
 
     alert("Quote Saved");
   }
 
-  /* =========================================
+  /* =====================================================
      UI
-  ========================================= */
+  ===================================================== */
 
   return (
-    <div className="flex bg-zinc-950 text-white min-h-screen">
+    <div className="flex min-h-screen bg-zinc-950 text-white">
+
       <Sidebar />
 
       <div className="flex-1 p-8">
@@ -339,16 +276,18 @@ export default function Quotes() {
 
         <div className="grid md:grid-cols-2 gap-8">
 
-          {/* =========================
+          {/* =================================================
               FORM
-          ========================= */}
+          ================================================= */}
 
-          <div className="bg-zinc-900 p-6 rounded-2xl space-y-4">
+          <div className="bg-zinc-900 rounded-2xl p-6 space-y-4">
 
             <select
-              className="w-full p-3 rounded-xl bg-zinc-800"
               value={form.customerId}
-              onChange={e => selectCustomer(e.target.value)}
+              onChange={e =>
+                selectCustomer(e.target.value)
+              }
+              className="w-full p-3 rounded-xl bg-zinc-800"
             >
               <option value="">
                 Select Customer
@@ -365,52 +304,67 @@ export default function Quotes() {
             </select>
 
             <input
-              className="w-full p-3 bg-zinc-800 rounded-xl"
+              type="number"
               placeholder="Goods Value"
               value={form.value}
               onChange={e =>
-                update("value", e.target.value)
+                update(
+                  "value",
+                  e.target.value
+                )
               }
+              className="w-full p-3 rounded-xl bg-zinc-800"
             />
 
             <input
-              className="w-full p-3 bg-zinc-800 rounded-xl"
+              type="number"
               placeholder="Weight"
               value={form.weight}
               onChange={e =>
-                update("weight", e.target.value)
+                update(
+                  "weight",
+                  e.target.value
+                )
               }
+              className="w-full p-3 rounded-xl bg-zinc-800"
             />
 
             <input
-              className="w-full p-3 bg-zinc-800 rounded-xl"
+              type="number"
               placeholder="Pieces"
               value={form.pieces}
               onChange={e =>
-                update("pieces", e.target.value)
+                update(
+                  "pieces",
+                  e.target.value
+                )
               }
+              className="w-full p-3 rounded-xl bg-zinc-800"
             />
 
             <input
-              className="w-full p-3 bg-zinc-800 rounded-xl"
+              type="number"
               placeholder="CBM"
               value={form.cbm}
               onChange={e =>
-                update("cbm", e.target.value)
+                update(
+                  "cbm",
+                  e.target.value
+                )
               }
+              className="w-full p-3 rounded-xl bg-zinc-800"
             />
 
             <select
-              className="w-full p-3 bg-zinc-800 rounded-xl"
               value={form.transport}
               onChange={e =>
-                update("transport", e.target.value)
+                update(
+                  "transport",
+                  e.target.value
+                )
               }
+              className="w-full p-3 rounded-xl bg-zinc-800"
             >
-              <option value="Courier">
-                Courier
-              </option>
-
               <option value="Air">
                 Air
               </option>
@@ -418,22 +372,26 @@ export default function Quotes() {
               <option value="Sea">
                 Sea
               </option>
+
+              <option value="Courier">
+                Courier
+              </option>
             </select>
 
             <button
               onClick={calculate}
-              className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 transition-all p-3 rounded-xl"
+              className="w-full p-3 rounded-xl bg-fuchsia-700 hover:bg-fuchsia-600"
             >
               Calculate Quote
             </button>
 
           </div>
 
-          {/* =========================
-              RESULTS
-          ========================= */}
+          {/* =================================================
+              RESULT
+          ================================================= */}
 
-          <div className="bg-zinc-900 p-6 rounded-2xl">
+          <div className="bg-zinc-900 rounded-2xl p-6">
 
             {!result && (
               <div className="text-zinc-400">
@@ -442,58 +400,105 @@ export default function Quotes() {
             )}
 
             {result && (
-              <div className="space-y-3">
 
-                <div className="text-sm text-zinc-400">
-                  {selectedCustomer?.name}
+              <div className="space-y-4">
+
+                <div>
+
+                  <div className="text-zinc-400 text-sm">
+                    Customer
+                  </div>
+
+                  <div className="font-semibold">
+                    {selectedCustomer?.name}
+                  </div>
+
                 </div>
 
                 <div>
-                  Country: {result.country}
+
+                  <div className="text-zinc-400 text-sm">
+                    Country
+                  </div>
+
+                  <div>
+                    {result.country}
+                  </div>
+
                 </div>
 
-                {result.zone && (
+                {result.transport && (
                   <div>
-                    Zone: {result.zone}
+
+                    <div className="text-zinc-400 text-sm">
+                      Transport
+                    </div>
+
+                    <div>
+                      {result.transport}
+                    </div>
+
                   </div>
                 )}
 
-                <Row
-                  label="Duty"
-                  value={result.duty}
-                />
+                {result.zone !== null &&
+                  result.zone !== undefined && (
+                  <div>
 
-                <Row
-                  label="Clearance"
-                  value={result.clearance}
-                />
+                    <div className="text-zinc-400 text-sm">
+                      Zone
+                    </div>
 
-                <Row
-                  label="Delivery"
-                  value={result.delivery}
-                />
+                    <div>
+                      {result.zone}
+                    </div>
 
-                {/* OPTIONAL BREAKDOWN */}
+                  </div>
+                )}
 
-                {result.breakdown &&
-                  Object.entries(result.breakdown).map(
-                    ([key, value]) => (
-                      <Row
-                        key={key}
-                        label={key}
-                        value={value}
-                      />
-                    )
-                  )}
+                <div className="border-t border-zinc-800 pt-4 space-y-2">
 
-                <div className="text-3xl font-bold text-fuchsia-500 pt-4 border-t border-zinc-800">
-                  {result.currency}{" "}
-                  {Number(result.total || 0).toFixed(2)}
+                  <Row
+                    label="Duty"
+                    value={result.duty}
+                  />
+
+                  <Row
+                    label="Clearance"
+                    value={result.clearance}
+                  />
+
+                  <Row
+                    label="Delivery"
+                    value={result.delivery}
+                  />
+
                 </div>
+
+                <div className="border-t border-zinc-800 pt-4">
+
+                  <div className="text-zinc-400 text-sm">
+                    Total
+                  </div>
+
+                  <div className="text-4xl font-bold text-fuchsia-500">
+                    {result.currency}{" "}
+                    {Number(
+                      result.total || 0
+                    ).toFixed(2)}
+                  </div>
+
+                </div>
+
+                {result.error && (
+                  <div className="bg-red-900/30 border border-red-700 text-red-300 p-3 rounded-xl">
+                    {result.error}
+                  </div>
+                )}
 
                 <button
                   onClick={saveQuote}
-                  className="w-full bg-green-600 hover:bg-green-700 transition-all p-3 rounded-xl"
+                  className="w-full p-3 rounded-xl bg-green-600 hover:bg-green-500"
                 >
                   Save Quote
                 </button>
@@ -504,23 +509,31 @@ export default function Quotes() {
           </div>
 
         </div>
+
       </div>
     </div>
   );
 }
 
-/* =========================================
-   RESULT ROW
-========================================= */
+/* =========================================================
+   ROW COMPONENT
+========================================================= */
 
-function Row({ label, value }) {
+function Row({
+  label,
+  value
+}) {
   return (
     <div className="flex justify-between border-b border-zinc-800 pb-2">
-      <span>{label}</span>
+
+      <span>
+        {label}
+      </span>
 
       <span>
         {Number(value || 0).toFixed(2)}
       </span>
+
     </div>
   );
 }
