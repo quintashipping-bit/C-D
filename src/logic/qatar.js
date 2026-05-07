@@ -1,28 +1,45 @@
-export default function calculateQatar(form, fx = 4.65) {
-  const value = Number(form.value || 0);
+export function calculateQatar({
+  weight,
+  courierRate,
+  minimumCharge,
+  maximumCharge,
+  exportRate,
+  customsValue,
+}) {
 
-  const duty = value * 0.05;
+  let courierCharge = weight * courierRate;
 
-  const qatarValue = value * fx;
+  if (courierCharge > maximumCharge) {
+    courierCharge = maximumCharge;
+  }
 
-  let legalisation = 0;
+  if (courierCharge < minimumCharge) {
+    courierCharge = minimumCharge;
+  }
 
-  if (qatarValue <= 15000) legalisation = 650;
-  else if (qatarValue <= 100000) legalisation = 1150;
-  else if (qatarValue <= 250000) legalisation = 2650;
-  else if (qatarValue <= 1000000) legalisation = 5150;
-  else legalisation = qatarValue * 0.006;
+  const exportCharge = weight * exportRate;
+
+  let customsCharge = 0;
+
+  if (customsValue < 15000) {
+    customsCharge = 250;
+  } else if (customsValue < 100000) {
+    customsCharge = 500;
+  } else if (customsValue < 250000) {
+    customsCharge = 750;
+  } else {
+    customsCharge = customsValue * 0.006;
+  }
 
   const total =
-    duty +
-    legalisation;
+    courierCharge +
+    exportCharge +
+    customsCharge;
 
   return {
-    country: "Qatar",
-    currency: "QAR",
-    duty,
-    clearance: legalisation,
-    delivery: 0,
-    total
+    courierCharge,
+    exportCharge,
+    customsCharge,
+    total,
   };
 }
