@@ -8,7 +8,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import App from "./App";
 
-import "./index.html";
+import ".src/styles/index.css";
 
 /* =====================================================
    ROOT RENDER
