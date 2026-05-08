@@ -15,7 +15,7 @@ import Sidebar from "../components/Sidebar";
    LOGIC IMPORTS
 ===================================================== */
 
-import { calculateAustraliaExact } from "../logic/australia";
+import { calculateAustralia } from "../logic/australia";
 import { calculateSouthAfrica } from "../logic/southAfricaLogic";
 import { calculateSaudi } from "../logic/saudi";
 import { calculateQatar } from "../logic/qatar";
@@ -124,7 +124,7 @@ export default function Quotes() {
 
     if (country === "AUSTRALIA") {
 
-      quote = calculateAustraliaExact({
+      quote = calculateAustralia({
         customerName: selectedCustomer.name,
         value,
         weight,
