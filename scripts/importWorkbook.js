@@ -13,12 +13,13 @@ import {
 ========================================= */
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBzfsXs4KFACtODvWfCIOEtuWnZQjTqpC0",
+  authDomain: "c-and-d-calculator.firebaseapp.com",
+  projectId: "c-and-d-calculator",
+  storageBucket: "c-and-d-calculator.firebasestorage.app",
+  messagingSenderId: "424737960704",
+  appId: "1:424737960704:web:42bb854480cb0be5bff9e5",
+  measurementId: "G-RP7T2H6Z94"
 };
 
 const app = initializeApp(firebaseConfig);
