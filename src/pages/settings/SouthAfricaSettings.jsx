@@ -2,52 +2,57 @@ import { useEffect, useState } from "react";
 import {
   doc,
   getDoc,
-  setDoc
+  updateDoc
 } from "firebase/firestore";
 
 import { db } from "../../firebase/config";
 import Sidebar from "../../components/Sidebar";
 
 export default function SouthAfricaSettings() {
-  const [loading, setLoading] = useState(true);
 
   const [settings, setSettings] = useState({
-    courierBase: {
-      A: 0,
-      B: 0,
-      C: 0,
-      D: 0
-    },
-
-    courierPerKg: {
-      A: 0,
-      B: 0,
-      C: 0,
-      D: 0
-    }
+    courierBase: {},
+    courierPerKg: {}
   });
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadSettings();
   }, []);
 
   async function loadSettings() {
-    try {
-      const ref = doc(db, "settings", "southAfrica");
 
-      const snap = await getDoc(ref);
+    try {
+
+      const snap = await getDoc(
+        doc(db, "settings", "southAfrica")
+      );
 
       if (snap.exists()) {
-        setSettings(snap.data());
-      }
-    } catch (err) {
-      console.error(err);
-    }
 
-    setLoading(false);
+        console.log("SA SETTINGS:", snap.data());
+
+        setSettings({
+          courierBase: snap.data().courierBase || {},
+          courierPerKg: snap.data().courierPerKg || {}
+        });
+      }
+
+    } catch (err) {
+
+      console.error(err);
+      alert("Failed to load South Africa settings");
+
+    } finally {
+
+      setLoading(false);
+
+    }
   }
 
   function updateBase(zone, value) {
+
     setSettings(prev => ({
       ...prev,
       courierBase: {
@@ -57,7 +62,8 @@ export default function SouthAfricaSettings() {
     }));
   }
 
-  function updateKg(zone, value) {
+  function updatePerKg(zone, value) {
+
     setSettings(prev => ({
       ...prev,
       courierPerKg: {
@@ -67,109 +73,153 @@ export default function SouthAfricaSettings() {
     }));
   }
 
-  async function saveSettings() {
+  async function save() {
+
     try {
-      await setDoc(
+
+      await updateDoc(
         doc(db, "settings", "southAfrica"),
         settings
       );
 
-      alert("South Africa settings saved");
+      alert("South Africa settings updated");
+
     } catch (err) {
+
       console.error(err);
-      alert("Failed to save");
+      alert("Save failed");
+
     }
   }
 
   if (loading) {
     return (
-      <div className="bg-zinc-950 text-white min-h-screen flex">
-        <Sidebar />
-        <div className="p-10">Loading...</div>
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
+        Loading...
       </div>
     );
   }
 
   return (
-    <div className="bg-zinc-950 text-white min-h-screen flex">
+    <div className="min-h-screen bg-zinc-950 text-white flex">
+
       <Sidebar />
 
-      <div className="flex-1 p-8 max-w-5xl">
+      <div className="flex-1 p-8">
 
-        <h1 className="text-3xl font-bold text-fuchsia-500 mb-8">
+        <h1 className="text-4xl font-bold text-fuchsia-500 mb-8">
           South Africa Settings
         </h1>
 
-        <div className="bg-zinc-900 rounded-2xl p-6 space-y-10">
+        {/* BASE CHARGES */}
 
-          {/* BASE */}
+        <div className="bg-zinc-900 rounded-2xl p-6 mb-8">
 
-          <div>
-            <h2 className="text-xl font-bold mb-4">
-              Courier Base Charges
-            </h2>
+          <h2 className="text-2xl font-bold mb-6">
+            Zone Base Charges
+          </h2>
 
-            <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-4">
 
-              {Object.keys(settings.courierBase).map(zone => (
-                <Input
-                  key={zone}
-                  label={`Zone ${zone}`}
+            {Object.keys(settings.courierBase || {}).length === 0 && (
+              <div className="text-zinc-500">
+                No base charges found
+              </div>
+            )}
+
+            {Object.keys(settings.courierBase || {}).map(zone => (
+
+              <div
+                key={zone}
+                className="flex items-center justify-between gap-4"
+              >
+
+                <div className="w-24 font-bold">
+                  Zone {zone}
+                </div>
+
+                <input
+                  type="number"
                   value={settings.courierBase[zone]}
-                  onChange={v => updateBase(zone, v)}
+                  onChange={e =>
+                    updateBase(zone, e.target.value)
+                  }
+                  className="
+                    flex-1
+                    bg-zinc-800
+                    rounded-xl
+                    p-3
+                  "
                 />
-              ))}
 
-            </div>
+              </div>
+            ))}
+
           </div>
-
-          {/* KG */}
-
-          <div>
-            <h2 className="text-xl font-bold mb-4">
-              Per KG Rates
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-4">
-
-              {Object.keys(settings.courierPerKg).map(zone => (
-                <Input
-                  key={zone}
-                  label={`Zone ${zone}`}
-                  value={settings.courierPerKg[zone]}
-                  onChange={v => updateKg(zone, v)}
-                />
-              ))}
-
-            </div>
-          </div>
-
-          <button
-            onClick={saveSettings}
-            className="bg-fuchsia-700 hover:bg-fuchsia-800 px-6 py-3 rounded-xl font-bold"
-          >
-            Save Settings
-          </button>
-
         </div>
+
+        {/* PER KG */}
+
+        <div className="bg-zinc-900 rounded-2xl p-6 mb-8">
+
+          <h2 className="text-2xl font-bold mb-6">
+            Zone Per KG Rates
+          </h2>
+
+          <div className="space-y-4">
+
+            {Object.keys(settings.courierPerKg || {}).length === 0 && (
+              <div className="text-zinc-500">
+                No KG rates found
+              </div>
+            )}
+
+            {Object.keys(settings.courierPerKg || {}).map(zone => (
+
+              <div
+                key={zone}
+                className="flex items-center justify-between gap-4"
+              >
+
+                <div className="w-24 font-bold">
+                  Zone {zone}
+                </div>
+
+                <input
+                  type="number"
+                  value={settings.courierPerKg[zone]}
+                  onChange={e =>
+                    updatePerKg(zone, e.target.value)
+                  }
+                  className="
+                    flex-1
+                    bg-zinc-800
+                    rounded-xl
+                    p-3
+                  "
+                />
+
+              </div>
+            ))}
+
+          </div>
+        </div>
+
+        <button
+          onClick={save}
+          className="
+            bg-fuchsia-700
+            hover:bg-fuchsia-600
+            px-6
+            py-3
+            rounded-xl
+            font-bold
+          "
+        >
+          Save Settings
+        </button>
+
       </div>
-    </div>
-  );
-}
-
-function Input({ label, value, onChange }) {
-  return (
-    <div>
-      <label className="block text-sm text-zinc-400 mb-2">
-        {label}
-      </label>
-
-      <input
-        type="number"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full p-3 rounded-xl bg-zinc-800"
-      />
     </div>
   );
 }
