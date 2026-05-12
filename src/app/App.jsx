@@ -1,11 +1,20 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 
+/* MAIN PAGES */
 import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
 import Quotes from "../pages/Quotes";
 import QuoteHistory from "../pages/QuoteHistory";
 import Settings from "../pages/Settings";
+
+/* SETTINGS SUB PAGES */
+import AustraliaSettings from "../pages/settings/AustraliaSettings";
+import SouthAfricaSettings from "../pages/settings/SouthAfricaSettings";
+
+/* =====================================================
+   PLACEHOLDER
+===================================================== */
 
 function Placeholder({ title }) {
   return (
@@ -21,6 +30,10 @@ function Placeholder({ title }) {
   );
 }
 
+/* =====================================================
+   PROTECTED ROUTE
+===================================================== */
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -35,17 +48,27 @@ function ProtectedRoute({ children }) {
   return user ? children : <Navigate to="/login" />;
 }
 
+/* =====================================================
+   APP ROUTES
+===================================================== */
+
 function AppRoutes() {
   return (
     <Routes>
 
-      {/* PUBLIC */}
+      {/* =====================================================
+          PUBLIC
+      ===================================================== */}
+
       <Route
         path="/login"
         element={<Login />}
       />
 
-      {/* DASHBOARD */}
+      {/* =====================================================
+          DASHBOARD
+      ===================================================== */}
+
       <Route
         path="/"
         element={
@@ -55,7 +78,10 @@ function AppRoutes() {
         }
       />
 
-      {/* QUOTES */}
+      {/* =====================================================
+          QUOTES
+      ===================================================== */}
+
       <Route
         path="/quotes"
         element={
@@ -65,7 +91,10 @@ function AppRoutes() {
         }
       />
 
-      {/* HISTORY */}
+      {/* =====================================================
+          HISTORY
+      ===================================================== */}
+
       <Route
         path="/history"
         element={
@@ -75,7 +104,10 @@ function AppRoutes() {
         }
       />
 
-      {/* CUSTOMERS */}
+      {/* =====================================================
+          CUSTOMERS
+      ===================================================== */}
+
       <Route
         path="/customers"
         element={
@@ -85,7 +117,10 @@ function AppRoutes() {
         }
       />
 
-      {/* USERS */}
+      {/* =====================================================
+          USERS
+      ===================================================== */}
+
       <Route
         path="/users"
         element={
@@ -95,7 +130,10 @@ function AppRoutes() {
         }
       />
 
-      {/* SETTINGS */}
+      {/* =====================================================
+          MAIN SETTINGS PAGE
+      ===================================================== */}
+
       <Route
         path="/settings"
         element={
@@ -105,7 +143,88 @@ function AppRoutes() {
         }
       />
 
-      {/* FALLBACK */}
+      {/* =====================================================
+          AUSTRALIA SETTINGS
+      ===================================================== */}
+
+      <Route
+        path="/settings/australia"
+        element={
+          <ProtectedRoute>
+            <AustraliaSettings />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* =====================================================
+          SOUTH AFRICA SETTINGS
+      ===================================================== */}
+
+      <Route
+        path="/settings/south-africa"
+        element={
+          <ProtectedRoute>
+            <SouthAfricaSettings />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* =====================================================
+          QATAR SETTINGS
+      ===================================================== */}
+
+      <Route
+        path="/settings/qatar"
+        element={
+          <ProtectedRoute>
+            <Placeholder title="Qatar Settings" />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* =====================================================
+          SAUDI SETTINGS
+      ===================================================== */}
+
+      <Route
+        path="/settings/saudi"
+        element={
+          <ProtectedRoute>
+            <Placeholder title="Saudi Settings" />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* =====================================================
+          SINGAPORE SETTINGS
+      ===================================================== */}
+
+      <Route
+        path="/settings/singapore"
+        element={
+          <ProtectedRoute>
+            <Placeholder title="Singapore Settings" />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* =====================================================
+          EXCHANGE RATES
+      ===================================================== */}
+
+      <Route
+        path="/settings/exchange-rates"
+        element={
+          <ProtectedRoute>
+            <Placeholder title="Exchange Rates" />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* =====================================================
+          FALLBACK
+      ===================================================== */}
+
       <Route
         path="*"
         element={<Navigate to="/" />}
@@ -114,6 +233,10 @@ function AppRoutes() {
     </Routes>
   );
 }
+
+/* =====================================================
+   APP
+===================================================== */
 
 export default function App() {
   return (
