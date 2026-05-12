@@ -1,132 +1,81 @@
-import { useEffect, useState } from "react";
-import {
-  doc,
-  getDoc,
-  setDoc
-} from "firebase/firestore";
-
-import { db } from "../firebase/config";
+import { Link } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 
 export default function Settings() {
-  const [saudi, setSaudi] = useState({
-    dutyRate: "",
-    minMerchandise: "",
-    maxMerchandise: "",
-    percentage: "",
-    taxPaidFee: ""
-  });
+  const cards = [
+    {
+      title: "Australia",
+      path: "/settings/australia",
+      description: "Manage Australia delivery rates and clearance fees"
+    },
 
-  const [qatar, setQatar] = useState({
-    dutyRate: "",
-    fxRate: ""
-  });
+    {
+      title: "South Africa",
+      path: "/settings/south-africa",
+      description: "Manage South Africa zones and KG pricing"
+    },
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+    {
+      title: "Qatar",
+      path: "/settings/qatar",
+      description: "Manage Qatar customs and legal fees"
+    },
 
-  async function loadSettings() {
-    const saudiSnap = await getDoc(
-      doc(db, "settings", "saudi")
-    );
+    {
+      title: "Saudi Arabia",
+      path: "/settings/saudi",
+      description: "Manage Saudi duty and clearance settings"
+    },
 
-    const qatarSnap = await getDoc(
-      doc(db, "settings", "qatar")
-    );
+    {
+      title: "Singapore",
+      path: "/settings/singapore",
+      description: "Manage Singapore air and sea charges"
+    },
 
-    if (saudiSnap.exists()) {
-      setSaudi(saudiSnap.data());
+    {
+      title: "Exchange Rates",
+      path: "/settings/exchange-rates",
+      description: "Manage currency exchange rates"
     }
-
-    if (qatarSnap.exists()) {
-      setQatar(qatarSnap.data());
-    }
-  }
-
-  async function save() {
-    await setDoc(
-      doc(db, "settings", "saudi"),
-      saudi
-    );
-
-    await setDoc(
-      doc(db, "settings", "qatar"),
-      qatar
-    );
-
-    alert("Settings Saved");
-  }
+  ];
 
   return (
-    <div className="flex bg-zinc-950 text-white min-h-screen">
+    <div className="min-h-screen bg-zinc-950 text-white flex">
       <Sidebar />
 
-      <div className="flex-1 p-8 max-w-3xl">
+      <div className="flex-1 p-8">
 
-        <h1 className="text-3xl font-bold text-fuchsia-500 mb-8">
+        <h1 className="text-4xl font-bold text-fuchsia-500 mb-8">
           Settings
         </h1>
 
-        <div className="bg-zinc-900 p-6 rounded-2xl space-y-8">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
 
-          <div>
-            <h2 className="text-xl mb-4">
-              Saudi Arabia
-            </h2>
+          {cards.map(card => (
+            <Link
+              key={card.path}
+              to={card.path}
+              className="
+                bg-zinc-900
+                hover:bg-zinc-800
+                transition
+                rounded-2xl
+                p-6
+                border border-zinc-800
+              "
+            >
+              <h2 className="text-xl font-bold mb-3">
+                {card.title}
+              </h2>
 
-            <input
-              className="w-full p-3 mb-3 rounded bg-zinc-800"
-              placeholder="Duty Rate"
-              value={saudi.dutyRate}
-              onChange={e =>
-                setSaudi({
-                  ...saudi,
-                  dutyRate: e.target.value
-                })
-              }
-            />
-
-            <input
-              className="w-full p-3 mb-3 rounded bg-zinc-800"
-              placeholder="Tax Paid Fee"
-              value={saudi.taxPaidFee}
-              onChange={e =>
-                setSaudi({
-                  ...saudi,
-                  taxPaidFee: e.target.value
-                })
-              }
-            />
-          </div>
-
-          <div>
-            <h2 className="text-xl mb-4">
-              Qatar
-            </h2>
-
-            <input
-              className="w-full p-3 mb-3 rounded bg-zinc-800"
-              placeholder="FX Rate"
-              value={qatar.fxRate}
-              onChange={e =>
-                setQatar({
-                  ...qatar,
-                  fxRate: e.target.value
-                })
-              }
-            />
-          </div>
-
-          <button
-            onClick={save}
-            className="w-full bg-fuchsia-700 p-3 rounded-xl"
-          >
-            Save Settings
-          </button>
+              <p className="text-zinc-400 text-sm">
+                {card.description}
+              </p>
+            </Link>
+          ))}
 
         </div>
-
       </div>
     </div>
   );
