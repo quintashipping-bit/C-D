@@ -1,185 +1,255 @@
 import { useEffect, useState } from "react";
-import {
-  doc,
-  getDoc,
-  setDoc
-} from "firebase/firestore";
-
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import Sidebar from "../../components/Sidebar";
 
+/* ── Default values taken directly from Excel sheet "Australia" ── */
+const DEFAULTS = {
+  dutyRate: 5,          // 5%
+  gstRate: 10,          // 10%
+  disbursementRate: 3,  // 3% of value
+  courier: {
+    abfChargeOver1000:  190,
+    abfCharge1001:       88,
+    abfChargeUnder1000:   0,
+    disbursementFee:     20,
+    govtCharge:         190,
+  },
+  air: {
+    electronicProcessingOver10k: 201,
+    electronicProcessingUnder10k: 90,
+    quarantineProcessing:         49,
+    declarationOver10k:          152,
+    declarationUnder10k:          50,
+    destinationAirlineDocFee:     80,
+    customsClearanceFee:         130,
+    chainOfResponsibility:        10,
+    cmrFee:                       20,
+    destinationCargoTerminalOps: 104.65,
+    destinationIntlTerminal:      80,
+    destinationQuarantineProcessing: 45,
+    destinationHandling:          85,
+    electronicEntryProcessing:   201,
+    quarantineProcessingAir:      49,
+    declarationProcessing:       152,
+    fuelSurcharge:              40.6,  // % of freight
+  },
+  sea: {
+    destinationPortCharges:       95,
+    destinationTerminalHandling:  20,
+    deliveryOrderFee:             50,
+    destinationQuarantineFee:     45,
+    cmrFee:                       25,
+    customsClearance:            125,
+    electronicEntryProcessing:   201,
+    quarantineProcessingFee:      49,
+    declarationProcessingFee:    152,
+    perCbmRate:                   20,
+  },
+  /* Local delivery zones — from Excel zone table */
+  deliveryZones: {
+    NN1: { label: "Sydney",    baseRate: 47.98,  perKgAfter5kg: 13.1956  },
+    VV1: { label: "Melbourne", baseRate: 42.74,  perKgAfter20kg: 1.4814  },
+    QQ1: { label: "Brisbane",  baseRate: 47.98,  perKgAfter5kg: 13.1956  },
+    SS1: { label: "Adelaide",  baseRate: 42.74,  perKgAfter20kg: 1.4814  },
+    WW1: { label: "Perth",     baseRate: 47.98,  perKgAfter5kg: 13.1956  },
+    QQ2: { label: "Brisbane 2",baseRate: 47.98,  perKgAfter5kg: 13.1956  },
+    QQ3: { label: "Brisbane 3",baseRate: 47.98,  perKgAfter5kg: 13.1956  },
+    QQ4: { label: "Brisbane 4",baseRate: 47.98,  perKgAfter5kg: 13.1956  },
+    VV2: { label: "Melbourne 2",baseRate: 42.74, perKgAfter20kg: 1.4814  },
+    WW2: { label: "Perth 2",   baseRate: 47.98,  perKgAfter5kg: 13.1956  },
+    TA1: { label: "Tasmania",  baseRate: 47.98,  perKgAfter5kg: 13.1956  },
+  }
+};
+
 export default function AustraliaSettings() {
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState(DEFAULTS);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
 
-  const [settings, setSettings] = useState({
-    airClearanceFee: 0,
-    seaClearanceFee: 0,
-    courierClearanceFee: 0,
-    fuelPercent: 0,
+  useEffect(() => { load(); }, []);
 
-    localDelivery: {
-      "ZONE 1": 0,
-      "ZONE 2": 0,
-      "ZONE 3": 0,
-      "ZONE 4": 0,
-      "ZONE 5": 0
-    }
-  });
-
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  async function loadSettings() {
+  async function load() {
     try {
-      const ref = doc(db, "settings", "australia");
-      const snap = await getDoc(ref);
-
+      const snap = await getDoc(doc(db, "settings", "australia"));
       if (snap.exists()) {
-        setSettings(snap.data());
+        // Merge with defaults so any new fields added later still appear
+        setSettings(prev => deepMerge(prev, snap.data()));
       }
-    } catch (err) {
-      console.error(err);
+      // If doc doesn't exist yet, we keep DEFAULTS — user can save them in
+    } catch (e) {
+      console.error("Failed to load Australia settings:", e);
     }
-
     setLoading(false);
   }
 
-  function update(field, value) {
+  async function save() {
+    setSaving(true);
+    try {
+      await setDoc(doc(db, "settings", "australia"), settings);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to save — check console");
+    }
+    setSaving(false);
+  }
+
+  function setNested(section, key, val) {
     setSettings(prev => ({
       ...prev,
-      [field]: Number(value)
+      [section]: { ...prev[section], [key]: Number(val) }
     }));
   }
 
-  function updateZone(zone, value) {
+  function setZoneField(zone, field, val) {
     setSettings(prev => ({
       ...prev,
-      localDelivery: {
-        ...prev.localDelivery,
-        [zone]: Number(value)
+      deliveryZones: {
+        ...prev.deliveryZones,
+        [zone]: { ...prev.deliveryZones[zone], [field]: field === "label" ? val : Number(val) }
       }
     }));
   }
 
-  async function saveSettings() {
-    try {
-      await setDoc(
-        doc(db, "settings", "australia"),
-        settings
-      );
-
-      alert("Australia settings saved");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save");
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="bg-zinc-950 text-white min-h-screen flex">
-        <Sidebar />
-        <div className="p-10">Loading...</div>
-      </div>
-    );
-  }
+  if (loading) return <Shell><div className="p-10 text-zinc-400">Loading settings…</div></Shell>;
 
   return (
-    <div className="bg-zinc-950 text-white min-h-screen flex">
-      <Sidebar />
-
+    <Shell>
       <div className="flex-1 p-8 max-w-5xl">
-
-        <h1 className="text-3xl font-bold text-fuchsia-500 mb-8">
-          Australia Settings
-        </h1>
-
-        <div className="bg-zinc-900 rounded-2xl p-6 space-y-8">
-
-          {/* CLEARANCE */}
-
-          <div>
-            <h2 className="text-xl font-bold mb-4">
-              Clearance Fees
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-4">
-
-              <Input
-                label="Air Clearance Fee"
-                value={settings.airClearanceFee}
-                onChange={v => update("airClearanceFee", v)}
-              />
-
-              <Input
-                label="Sea Clearance Fee"
-                value={settings.seaClearanceFee}
-                onChange={v => update("seaClearanceFee", v)}
-              />
-
-              <Input
-                label="Courier Clearance Fee"
-                value={settings.courierClearanceFee}
-                onChange={v => update("courierClearanceFee", v)}
-              />
-
-              <Input
-                label="Fuel %"
-                value={settings.fuelPercent}
-                onChange={v => update("fuelPercent", v)}
-              />
-
-            </div>
-          </div>
-
-          {/* LOCAL DELIVERY */}
-
-          <div>
-            <h2 className="text-xl font-bold mb-4">
-              Local Delivery Rates
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-4">
-
-              {Object.keys(settings.localDelivery).map(zone => (
-                <Input
-                  key={zone}
-                  label={zone}
-                  value={settings.localDelivery[zone]}
-                  onChange={v => updateZone(zone, v)}
-                />
-              ))}
-
-            </div>
-          </div>
-
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold text-fuchsia-500">Australia Settings</h1>
           <button
-            onClick={saveSettings}
+            onClick={save}
+            disabled={saving}
             className="bg-fuchsia-700 hover:bg-fuchsia-800 px-6 py-3 rounded-xl font-bold"
           >
-            Save Settings
+            {saving ? "Saving…" : saved ? "✓ Saved!" : "Save Settings"}
           </button>
-
         </div>
+
+        <p className="text-zinc-400 text-sm mb-6">
+          All values sourced from the C&D Calculator Excel spreadsheet. Edit and save to override.
+        </p>
+
+        {/* ── General rates ── */}
+        <Section title="General Rates">
+          <div className="grid md:grid-cols-3 gap-4">
+            <Num label="Duty rate (%)" value={settings.dutyRate}
+              onChange={v => setSettings(p => ({...p, dutyRate: Number(v)}))} />
+            <Num label="GST rate (%)" value={settings.gstRate}
+              onChange={v => setSettings(p => ({...p, gstRate: Number(v)}))} />
+            <Num label="Disbursement rate (%)" value={settings.disbursementRate}
+              onChange={v => setSettings(p => ({...p, disbursementRate: Number(v)}))} />
+          </div>
+        </Section>
+
+        {/* ── Courier ── */}
+        <Section title="Courier Charges (AUD)">
+          <div className="grid md:grid-cols-3 gap-4">
+            <Num label="ABF charge (value > AUD 1,000)" value={settings.courier.abfChargeOver1000} onChange={v => setNested("courier","abfChargeOver1000",v)} />
+            <Num label="ABF charge (AUD 1,001 bracket)" value={settings.courier.abfCharge1001}      onChange={v => setNested("courier","abfCharge1001",v)} />
+            <Num label="ABF charge (value ≤ AUD 1,000)" value={settings.courier.abfChargeUnder1000} onChange={v => setNested("courier","abfChargeUnder1000",v)} />
+            <Num label="Disbursement fee (AUD)"          value={settings.courier.disbursementFee}    onChange={v => setNested("courier","disbursementFee",v)} />
+            <Num label="Govt charge (AUD)"               value={settings.courier.govtCharge}         onChange={v => setNested("courier","govtCharge",v)} />
+          </div>
+        </Section>
+
+        {/* ── Air ── */}
+        <Section title="Air Freight Charges (AUD)">
+          <div className="grid md:grid-cols-3 gap-4">
+            {Object.entries(settings.air).map(([k, v]) => (
+              <Num key={k} label={camel(k)} value={v} onChange={val => setNested("air", k, val)} />
+            ))}
+          </div>
+        </Section>
+
+        {/* ── Sea ── */}
+        <Section title="Sea Freight Charges (AUD)">
+          <div className="grid md:grid-cols-3 gap-4">
+            {Object.entries(settings.sea).map(([k, v]) => (
+              <Num key={k} label={camel(k)} value={v} onChange={val => setNested("sea", k, val)} />
+            ))}
+          </div>
+        </Section>
+
+        {/* ── Delivery zones ── */}
+        <Section title="Local Delivery Zones (AUD)">
+          <p className="text-zinc-400 text-sm mb-4">
+            These are the local delivery rates per zone code used in the calculator. Each customer is assigned a zone in the Customers page.
+          </p>
+          <div className="space-y-3">
+            <div className="grid grid-cols-4 gap-3 text-xs text-zinc-500 uppercase tracking-wider px-1">
+              <span>Zone code</span><span>City / label</span><span>Base delivery rate</span><span>Rate per kg (after threshold)</span>
+            </div>
+            {Object.entries(settings.deliveryZones).map(([code, z]) => (
+              <div key={code} className="grid grid-cols-4 gap-3 items-center bg-zinc-800 rounded-xl p-3">
+                <span className="font-mono font-bold text-fuchsia-400">{code}</span>
+                <input value={z.label} onChange={e => setZoneField(code, "label", e.target.value)}
+                  className="p-2 rounded-lg bg-zinc-700 text-sm" />
+                <input type="number" step="0.01"
+                  value={z.baseRate ?? ""} onChange={e => setZoneField(code, "baseRate", e.target.value)}
+                  className="p-2 rounded-lg bg-zinc-700 text-sm" />
+                <input type="number" step="0.0001"
+                  value={z.perKgAfter5kg ?? z.perKgAfter20kg ?? ""}
+                  onChange={e => setZoneField(code, z.perKgAfter20kg !== undefined ? "perKgAfter20kg" : "perKgAfter5kg", e.target.value)}
+                  className="p-2 rounded-lg bg-zinc-700 text-sm" />
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <button
+          onClick={save}
+          disabled={saving}
+          className="bg-fuchsia-700 hover:bg-fuchsia-800 px-8 py-3 rounded-xl font-bold mt-2"
+        >
+          {saving ? "Saving…" : saved ? "✓ Saved!" : "Save All Settings"}
+        </button>
       </div>
+    </Shell>
+  );
+}
+
+/* ── Helpers ── */
+function Shell({ children }) {
+  return <div className="flex bg-zinc-950 text-white min-h-screen"><Sidebar />{children}</div>;
+}
+
+function Section({ title, children }) {
+  return (
+    <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
+      <h2 className="text-lg font-bold text-zinc-200 mb-4 border-b border-zinc-800 pb-2">{title}</h2>
+      {children}
     </div>
   );
 }
 
-function Input({ label, value, onChange }) {
+function Num({ label, value, onChange }) {
   return (
     <div>
-      <label className="block text-sm text-zinc-400 mb-2">
-        {label}
-      </label>
-
-      <input
-        type="number"
-        value={value}
+      <label className="block text-xs text-zinc-400 mb-1">{label}</label>
+      <input type="number" step="0.01" value={value ?? ""}
         onChange={e => onChange(e.target.value)}
-        className="w-full p-3 rounded-xl bg-zinc-800"
-      />
+        className="w-full p-3 rounded-xl bg-zinc-800 text-sm" />
     </div>
   );
+}
+
+function camel(str) {
+  return str.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase()).trim();
+}
+
+function deepMerge(target, source) {
+  const out = { ...target };
+  for (const key of Object.keys(source)) {
+    if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
+      out[key] = deepMerge(target[key] || {}, source[key]);
+    } else {
+      out[key] = source[key];
+    }
+  }
+  return out;
 }
