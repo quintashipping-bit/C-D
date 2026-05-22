@@ -1,63 +1,56 @@
+// src/pages/settings/ExchangeRates.jsx
 import { useEffect, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import Sidebar from "../../components/Sidebar";
-
-const DEFAULT_RATES = {
-  GBP: 1,
-  USD: 1.27,
-  EUR: 1.17,
-  AUD: 1.97,
-  ZAR: 23.5,
-  SGD: 1.73,
-  SAR: 4.76,
-  QAR: 4.63,
-  AED: 4.67,
-  KWD: 0.39
-};
+import { getExchangeRates, SYMBOLS } from "../../services/exchangeRates";
 
 export default function ExchangeRates() {
-  const [rates, setRates] = useState(DEFAULT_RATES);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
+  const [liveRates, setLiveRates]   = useState(null);
+  const [liveInfo, setLiveInfo]     = useState("");
+  const [loading, setLoading]       = useState(true);
+  const [saving, setSaving]         = useState(false);
+  const [saved, setSaved]           = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const CURRENCIES = [
+    { code: "AUD", name: "Australian Dollar",  flag: "🇦🇺" },
+    { code: "ZAR", name: "South African Rand", flag: "🇿🇦" },
+    { code: "USD", name: "US Dollar",          flag: "🇺🇸" },
+    { code: "EUR", name: "Euro",               flag: "🇪🇺" },
+    { code: "SGD", name: "Singapore Dollar",   flag: "🇸🇬" },
+    { code: "SAR", name: "Saudi Riyal",        flag: "🇸🇦" },
+    { code: "QAR", name: "Qatari Riyal",       flag: "🇶🇦" },
+  ];
 
   useEffect(() => { load(); }, []);
 
   async function load() {
-    try {
-      const snap = await getDoc(doc(db, "settings", "exchangeRates"));
-      if (snap.exists()) {
-        const d = snap.data();
-        setRates(d.rates || DEFAULT_RATES);
-        setLastUpdated(d.updatedAt || null);
-      }
-    } catch (e) { console.error(e); }
+    setLoading(true);
+    const r = await getExchangeRates();
+    setLiveRates(r);
+    const src =
+      r._source === "live"     ? `Live from frankfurter.app / ECB (${r._date})` :
+      r._source === "cache"    ? `Cached from earlier today (${r._date})` :
+                                  "Fallback rates (API unavailable)";
+    setLiveInfo(src);
     setLoading(false);
   }
 
-  async function save() {
-    setSaving(true);
+  async function forceRefresh() {
+    setRefreshing(true);
+    // Delete cache so getExchangeRates fetches fresh
     try {
-      const now = new Date().toLocaleString("en-GB");
-      await setDoc(doc(db, "settings", "exchangeRates"), {
-        rates,
-        updatedAt: now
-      });
-      setLastUpdated(now);
-      alert("Exchange rates saved");
-    } catch (e) { alert("Failed to save"); }
-    setSaving(false);
-  }
-
-  function updateRate(code, val) {
-    setRates(prev => ({ ...prev, [code]: Number(val) }));
+      await setDoc(doc(db, "settings", "fxRatesCache"), { date: "force-refresh" });
+    } catch (e) { console.warn(e); }
+    await load();
+    setRefreshing(false);
   }
 
   if (loading) return (
     <div className="flex bg-zinc-950 text-white min-h-screen">
       <Sidebar />
-      <div className="p-10">Loading...</div>
+      <div className="p-10 text-zinc-400">Loading exchange rates…</div>
     </div>
   );
 
@@ -68,42 +61,117 @@ export default function ExchangeRates() {
 
         <h1 className="text-3xl font-bold text-fuchsia-500 mb-2">Exchange Rates</h1>
         <p className="text-zinc-400 text-sm mb-6">
-          All rates expressed as: 1 GBP = X foreign currency.
-          {lastUpdated && <span className="ml-2 text-zinc-500">Last saved: {lastUpdated}</span>}
+          Rates are fetched automatically once per day from{" "}
+          <a href="https://www.frankfurter.app" target="_blank" rel="noreferrer"
+            className="text-fuchsia-400 underline">frankfurter.app</a>{" "}
+          (European Central Bank data — free, no API key required) and cached in Firestore.
+          All rates shown as: <strong>1 GBP = X currency</strong>.
         </p>
 
-        <div className="bg-zinc-900 rounded-2xl p-6">
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
-            {Object.entries(rates).map(([code, rate]) => (
-              <div key={code}>
-                <label className="block text-sm text-zinc-400 mb-1">
-                  1 GBP = {code}
-                  {code === "GBP" && <span className="ml-2 text-zinc-600">(base — always 1)</span>}
-                </label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={rate}
-                  disabled={code === "GBP"}
-                  onChange={e => updateRate(code, e.target.value)}
-                  className="w-full p-3 rounded-xl bg-zinc-800 disabled:opacity-40"
-                />
-              </div>
-            ))}
+        {/* Status banner */}
+        <div className={`flex items-center justify-between p-4 rounded-xl mb-6 border ${
+          liveRates?._source === "live"
+            ? "bg-green-900/30 border-green-700"
+            : liveRates?._source === "cache"
+            ? "bg-blue-900/30 border-blue-700"
+            : "bg-amber-900/30 border-amber-700"
+        }`}>
+          <div>
+            <div className={`font-bold text-sm ${
+              liveRates?._source === "live" ? "text-green-300" :
+              liveRates?._source === "cache" ? "text-blue-300" : "text-amber-300"
+            }`}>
+              {liveRates?._source === "live"  ? "✅ Live rates loaded" :
+               liveRates?._source === "cache" ? "📋 Using cached rates" :
+                                                "⚠ Using fallback rates"}
+            </div>
+            <div className="text-xs text-zinc-400 mt-1">{liveInfo}</div>
           </div>
+          <button
+            onClick={forceRefresh}
+            disabled={refreshing}
+            className="bg-zinc-700 hover:bg-zinc-600 px-4 py-2 rounded-xl text-sm font-bold"
+          >
+            {refreshing ? "Refreshing…" : "Force refresh"}
+          </button>
+        </div>
 
-          <div className="border-t border-zinc-800 pt-4">
-            <p className="text-sm text-zinc-400 mb-4">
-              These rates are used by the quote engine when converting local currency totals back to GBP.
-            </p>
-            <button
-              onClick={save}
-              disabled={saving}
-              className="bg-fuchsia-700 hover:bg-fuchsia-800 px-6 py-3 rounded-xl font-bold"
-            >
-              {saving ? "Saving…" : "Save Rates"}
-            </button>
-          </div>
+        {/* Rates table */}
+        <div className="bg-zinc-900 rounded-2xl overflow-hidden mb-6">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-800">
+                <th className="text-left p-4 text-zinc-400 font-medium">Currency</th>
+                <th className="text-right p-4 text-zinc-400 font-medium">1 GBP =</th>
+                <th className="text-right p-4 text-zinc-400 font-medium">1 unit = GBP</th>
+                <th className="text-right p-4 text-zinc-400 font-medium">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* GBP base */}
+              <tr className="border-b border-zinc-800/50 bg-zinc-800/30">
+                <td className="p-4">
+                  <div className="flex items-center gap-2">
+                    <span>🇬🇧</span>
+                    <div>
+                      <div className="font-bold">GBP</div>
+                      <div className="text-xs text-zinc-400">British Pound (base)</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="p-4 text-right font-mono font-bold">1.0000</td>
+                <td className="p-4 text-right font-mono text-zinc-400">£1.0000</td>
+                <td className="p-4 text-right text-xs text-zinc-500">Base</td>
+              </tr>
+
+              {CURRENCIES.map(({ code, name, flag }) => {
+                const rate = liveRates?.[code];
+                return (
+                  <tr key={code} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <span>{flag}</span>
+                        <div>
+                          <div className="font-bold">{code}</div>
+                          <div className="text-xs text-zinc-400">{name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-right font-mono font-bold text-fuchsia-300">
+                      {rate ? rate.toFixed(4) : "—"}
+                    </td>
+                    <td className="p-4 text-right font-mono text-zinc-300">
+                      {rate ? `£${(1 / rate).toFixed(4)}` : "—"}
+                    </td>
+                    <td className="p-4 text-right">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        liveRates?._source === "live"
+                          ? "bg-green-900/50 text-green-300"
+                          : liveRates?._source === "cache"
+                          ? "bg-blue-900/50 text-blue-300"
+                          : "bg-amber-900/50 text-amber-300"
+                      }`}>
+                        {liveRates?._source === "live" ? "ECB live" :
+                         liveRates?._source === "cache" ? "cached" : "fallback"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Info box */}
+        <div className="bg-zinc-800 rounded-xl p-4 text-sm text-zinc-400 space-y-2">
+          <div className="font-bold text-zinc-300">How it works</div>
+          <ul className="space-y-1 list-disc list-inside text-xs">
+            <li>Rates are fetched once per calendar day from frankfurter.app (ECB source)</li>
+            <li>The daily fetch is cached in Firestore — subsequent page loads use the cache</li>
+            <li>If the API is unavailable, built-in fallback rates are used</li>
+            <li>Use "Force refresh" to fetch new rates immediately (e.g. after a market-moving event)</li>
+            <li>The Quote Engine uses these rates to convert local currency inputs (AUD, ZAR etc.) to GBP before running the cost calculation</li>
+          </ul>
         </div>
 
       </div>
