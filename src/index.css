@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  input, select, textarea {
+    @apply bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3 py-2.5 text-sm
+           focus:outline-none focus:border-[#C4006A] transition-colors placeholder-slate-500;
+  }
+  button {
+    @apply transition-all;
+  }
+}

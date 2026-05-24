@@ -1,6 +1,6 @@
 // src/pages/Quotes.jsx
 import { useEffect, useState, useCallback } from "react";
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, getDoc, setDoc, doc, runTransaction, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
 import Sidebar from "../components/Sidebar";
 
@@ -130,12 +130,26 @@ export default function Quotes() {
     setResult(quote);
   }
 
-  /* ── Save quote ── */
+  /* ── Save quote with autonumber ── */
   async function saveQuote() {
     if (!result || !selectedCustomer) return;
     setSaving(true);
     try {
+      // Get next quote number atomically
+      let quoteNumber = 1;
+      try {
+        const counterRef = doc(db, "settings", "quoteCounter");
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(counterRef);
+          quoteNumber = (snap.exists() ? snap.data().next : 0) + 1;
+          tx.set(counterRef, { next: quoteNumber });
+        });
+      } catch (e) {
+        console.warn("Counter failed, using timestamp fallback", e);
+        quoteNumber = Date.now();
+      }
       await addDoc(collection(db, "quotes"), {
+        quoteNumber,
         customerId:    form.customerId,
         customerName:  selectedCustomer.name,
         country:       result.country,
@@ -177,21 +191,20 @@ export default function Quotes() {
         <h1 className="text-3xl font-bold text-fuchsia-500 mb-2">Quote Engine</h1>
 
         {/* ── FX status bar ── */}
-        <div className={`flex items-center gap-3 text-xs px-4 py-2 rounded-xl mb-6 border ${
+        <div className={`flex items-center justify-between text-xs px-4 py-2.5 rounded-lg mb-6 border ${
           ratesLoading
-            ? "bg-zinc-800 border-zinc-700 text-zinc-400"
-            : rates?._source === "live"
-            ? "bg-green-900/30 border-green-800 text-green-300"
-            : rates?._source === "cache"
-            ? "bg-blue-900/30 border-blue-800 text-blue-300"
-            : "bg-amber-900/30 border-amber-800 text-amber-300"
+            ? "bg-slate-800 border-slate-700 text-slate-400"
+            : "bg-green-900/20 border-green-800/60 text-green-300"
         }`}>
-          <span className="font-bold">
-            {ratesLoading ? "⏳ Loading exchange rates…" : `🔄 ${ratesInfo}`}
-          </span>
+          <div className="flex items-center gap-2">
+            {!ratesLoading && <span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span>}
+            <span className="font-semibold text-green-300">
+              {ratesLoading ? "Loading exchange rates…" : `Exchange rates live · Updated ${rates?._date || ""}`}
+            </span>
+          </div>
           {!ratesLoading && rates && (
-            <span className="text-zinc-400 ml-2">
-              1 GBP = {rates.AUD} AUD · {rates.ZAR} ZAR · {rates.USD} USD · {rates.EUR} EUR · {rates.SGD} SGD
+            <span className="text-slate-400">
+              1 GBP = {rates.AUD?.toFixed(2)} AUD · {rates.ZAR?.toFixed(2)} ZAR · {rates.USD?.toFixed(4)} USD · {rates.EUR?.toFixed(4)} EUR
             </span>
           )}
         </div>
@@ -321,8 +334,7 @@ export default function Quotes() {
           <div className="bg-zinc-900 p-6 rounded-2xl">
             {!result ? (
               <div className="text-zinc-400 text-center py-16">
-                <div className="text-5xl mb-4">🧮</div>
-                <div>Select a customer and fill in the form</div>
+                <div className="text-slate-500 text-sm">Select a customer and fill in the details to generate a quote</div>
               </div>
             ) : (
               <ResultPanel

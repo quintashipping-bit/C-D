@@ -5,54 +5,79 @@ import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const navigate = useNavigate();
-
-  const [email, setEmail] = useState("");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
 
-  const submit = async (e) => {
+  async function submit(e) {
     e.preventDefault();
-
+    setLoading(true);
+    setError("");
     try {
-      setError("");
-
       await signInWithEmailAndPassword(auth, email, password);
-
-      navigate("/"); // THIS FIXES IT
-    } catch (error) {
-      setError(error.message);
+      navigate("/quotes");
+    } catch (err) {
+      setError("Invalid email or password. Please try again.");
     }
-  };
+    setLoading(false);
+  }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
-      <form
-        onSubmit={submit}
-        className="bg-zinc-900 p-8 rounded-2xl w-full max-w-md space-y-4"
-      >
-        <h1 className="text-2xl font-bold">C & D Calculator</h1>
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
 
-        <input
-          className="w-full p-3 rounded bg-zinc-800"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        {/* Logo + branding */}
+        <div className="flex flex-col items-center mb-8">
+          <img src="/logo.png" alt="Quinta Raddison" className="w-16 h-16 object-contain mb-4" />
+          <h1 className="text-white text-xl font-bold">Quinta Raddison Ltd</h1>
+          <p className="text-slate-400 text-sm mt-1">C&D Shipping Calculator</p>
+        </div>
 
-        <input
-          className="w-full p-3 rounded bg-zinc-800"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <form onSubmit={submit} className="bg-slate-900 border border-slate-800 rounded-xl p-8 space-y-4">
+          <div>
+            <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Email address</label>
+            <input
+              type="email"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-[#C4006A] transition"
+              placeholder="you@qrltd.co.uk"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+            />
+          </div>
 
-        {error && <p className="text-red-400">{error}</p>}
+          <div>
+            <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Password</label>
+            <input
+              type="password"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-[#C4006A] transition"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+            />
+          </div>
 
-        <button className="w-full bg-fuchsia-700 p-3 rounded">
-          Login
-        </button>
-      </form>
+          {error && (
+            <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-[#C4006A] hover:bg-[#a3005a] disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-all"
+          >
+            {loading ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+
+        <p className="text-center text-slate-600 text-xs mt-6">
+          © {new Date().getFullYear()} Quinta Raddison Ltd. All rights reserved.
+        </p>
+      </div>
     </div>
   );
 }
