@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebase/config";
 import { useNavigate } from "react-router-dom";
 
@@ -9,6 +9,8 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
@@ -18,16 +20,31 @@ export default function Login() {
       await signInWithEmailAndPassword(auth, email, password);
       navigate("/quotes");
     } catch (err) {
-      setError("Invalid email or password. Please try again.");
+      setError("Invalid email or password. Please try again, or use 'Forgot password' below.");
     }
     setLoading(false);
+  }
+
+  async function resetPassword() {
+    if (!email.trim()) {
+      setError("Enter your email address above, then click 'Forgot password'.");
+      return;
+    }
+    setResetLoading(true);
+    setError("");
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetSent(true);
+    } catch (err) {
+      setError("Could not send reset email. Check the address and try again.");
+    }
+    setResetLoading(false);
   }
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
 
-        {/* Logo + branding */}
         <div className="flex flex-col items-center mb-8">
           <img src="/logo.png" alt="Quinta Raddison" className="w-16 h-16 object-contain mb-4" />
           <h1 className="text-white text-xl font-bold">Quinta Raddison Ltd</h1>
@@ -35,6 +52,7 @@ export default function Login() {
         </div>
 
         <form onSubmit={submit} className="bg-slate-900 border border-slate-800 rounded-xl p-8 space-y-4">
+
           <div>
             <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Email address</label>
             <input
@@ -65,6 +83,12 @@ export default function Login() {
             </div>
           )}
 
+          {resetSent && (
+            <div className="bg-green-900/30 border border-green-800 rounded-lg px-4 py-3 text-green-300 text-sm">
+              Password reset email sent to <strong>{email}</strong>. Check your inbox and follow the link to set a new password.
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -72,6 +96,16 @@ export default function Login() {
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>
+
+          <button
+            type="button"
+            onClick={resetPassword}
+            disabled={resetLoading}
+            className="w-full py-2 text-slate-400 hover:text-white text-sm transition-all"
+          >
+            {resetLoading ? "Sending…" : "Forgot password?"}
+          </button>
+
         </form>
 
         <p className="text-center text-slate-600 text-xs mt-6">
