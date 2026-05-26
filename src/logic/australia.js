@@ -323,18 +323,21 @@ export function calculateAustralia({
 
   // ── AIR ──────────────────────────────────────────────────────────────
   if (t === "air") {
-    // Fixed charges from Excel "Australia Costs via Airfreight" section
-    const electronicProcessing = value > 10000 ? 201 : 90;  // >10K or <10K threshold (AUD — but Excel uses GBP threshold? Using AUD here)
-    const quarantineProcessing  = 49;
-    const declarationCharge     = value > 10000 ? 152 : 50;
-    const airlineDocFee         = 80;
-    const customsClearance      = 130;
-    const chainOfResponsibility = 10;
-    const cmrFee                = 20;
-    const cargoTerminalOps      = 104.65;
-    const intlTerminal          = 80;
-    const destQuarantine        = 45;
-    const destHandling          = 85;
+    // Fixed and weight-based charges from Excel "Australia Costs via Airfreight" section
+    // Threshold is on AUD invoice value
+    const electronicProcessing  = value > 10000 ? 201 : 90;   // Row 19/20: >10K=201, <10K=90
+    const quarantineProcessing  = 49;                          // Row 21: fixed
+    const declarationCharge     = value > 10000 ? 152 : 50;   // Row 22/23: >10K=152, <10K=50
+    const airlineDocFee         = 80;                          // Row 25: fixed
+    const customsClearance      = 130;                         // Row 26: fixed
+    const chainOfResponsibility = 10;                          // Row 27: fixed
+    const cmrFee                = 20;                          // Row 28: fixed
+    // Row 29: Cargo Terminal Ops = weight × 0.65 (pure per-kg, no base — confirmed: 161×0.65=104.65 ✓)
+    const cargoTerminalOps      = weight * 0.65;
+    // Row 30: International Terminal = max(80 minimum, weight × 0.175) — confirmed: max(80,161×0.175)=80 ✓
+    const intlTerminal          = Math.max(80, weight * 0.175);
+    const destQuarantine        = 45;                          // Row 31: fixed
+    const destHandling          = 85;                          // Row 32: fixed
 
     const clearanceFixed =
       electronicProcessing +
@@ -375,8 +378,8 @@ export function calculateAustralia({
         "Customs clearance":            customsClearance,
         "Chain of responsibility":      chainOfResponsibility,
         "CMR fee":                      cmrFee,
-        "Cargo terminal ops":           cargoTerminalOps,
-        "International terminal":       intlTerminal,
+        `Cargo terminal ops (${weight}kg × 0.65)`: cargoTerminalOps,
+        `International terminal (min £80, ${weight}kg × 0.175)`: intlTerminal,
         "Destination quarantine":       destQuarantine,
         "Destination handling":         destHandling,
         "Local delivery":               deliveryResult.delivery,
