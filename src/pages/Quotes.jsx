@@ -113,8 +113,22 @@ export default function Quotes() {
     let quote = null;
     const args = { customerName: selectedCustomer.name, value: valueGBP, weight, pieces, cbm, transport: form.transport };
 
-    if      (country === "AUSTRALIA")                        quote = calculateAustralia(args);
-    else if (country === "SOUTH AFRICA")                     quote = calculateSouthAfrica(args);
+    if (country === "AUSTRALIA") {
+      // Australia engine needs AUD value (for duty/ABF), GBP value (for disbursement), and zone code
+      const audValue  = valueInInputCurrency; // already in AUD (COUNTRY_INPUT_CURRENCY maps AU → AUD)
+      const zoneNum   = Number(selectedCustomer.zone) || 0;
+      const zoneCode  = selectedCustomer.zoneCode || "";
+      quote = calculateAustralia({
+        value:      audValue,
+        valueGBP:   valueGBP,
+        weight,
+        cbm,
+        transport:  form.transport,
+        zone:       zoneCode || String(zoneNum),
+        zoneNumber: zoneNum,
+      });
+    } else
+    if (country === "SOUTH AFRICA")                     quote = calculateSouthAfrica(args);
     else if (country === "SAUDI ARABIA" || country === "KSA") quote = calculateSaudi(args);
     else if (country === "QATAR")                            quote = calculateQatar(args);
     else if (country === "SINGAPORE")                        quote = calculateSingapore(args);
