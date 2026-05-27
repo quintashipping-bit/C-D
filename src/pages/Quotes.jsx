@@ -32,6 +32,9 @@ export default function Quotes() {
   const [result, setResult]               = useState(null);
   const [saving, setSaving]               = useState(false);
 
+  // Country settings (loaded from Firestore)
+  const [australiaSettings, setAustraliaSettings] = useState({});
+
   // FX state
   const [rates, setRates]       = useState(null);
   const [ratesLoading, setRatesLoading] = useState(true);
@@ -78,10 +81,13 @@ export default function Quotes() {
     })();
   }, []);
 
-  /* ── Load customers ── */
+  /* ── Load customers and country settings ── */
   useEffect(() => {
     getDocs(collection(db, "customers"))
       .then(snap => setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    getDoc(doc(db, "settings", "australia"))
+      .then(snap => { if (snap.exists()) setAustraliaSettings(snap.data()); })
+      .catch(() => {});
   }, []);
 
   function update(k, v) { setForm(p => ({ ...p, [k]: v })); }
@@ -126,6 +132,7 @@ export default function Quotes() {
         transport:  form.transport,
         zone:       zoneCode || String(zoneNum),
         zoneNumber: zoneNum,
+        settings:   australiaSettings,
       });
     } else
     if (country === "SOUTH AFRICA")                     quote = calculateSouthAfrica(args);

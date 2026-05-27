@@ -256,7 +256,9 @@ export function calculateAustralia({
   transport   = "Courier",
   zone        = "",   // Zone code "NN1","VV1" etc OR zone number 1-10
   zoneNumber  = null, // Numeric zone from customer record
+  settings    = {},   // Firestore settings/australia doc (optional — falls back to Excel defaults)
 }) {
+  const s = settings; // shorthand
 
   // Resolve zone code
   let zoneCode = String(zone || "").toUpperCase().trim();
@@ -323,21 +325,27 @@ export function calculateAustralia({
 
   // ── AIR ──────────────────────────────────────────────────────────────
   if (t === "air") {
-    // Fixed and weight-based charges from Excel "Australia Costs via Airfreight" section
-    // Threshold is on AUD invoice value
-    const electronicProcessing  = value > 10000 ? 201 : 90;   // Row 19/20: >10K=201, <10K=90
-    const quarantineProcessing  = 49;                          // Row 21: fixed
-    const declarationCharge     = value > 10000 ? 152 : 50;   // Row 22/23: >10K=152, <10K=50
-    const airlineDocFee         = 80;                          // Row 25: fixed
-    const customsClearance      = 130;                         // Row 26: fixed
-    const chainOfResponsibility = 10;                          // Row 27: fixed
-    const cmrFee                = 20;                          // Row 28: fixed
-    // Row 29: Cargo Terminal Ops = weight × 0.65 (pure per-kg, no base — confirmed: 161×0.65=104.65 ✓)
-    const cargoTerminalOps      = weight * 0.65;
-    // Row 30: International Terminal = max(80 minimum, weight × 0.175) — confirmed: max(80,161×0.175)=80 ✓
-    const intlTerminal          = Math.max(80, weight * 0.175);
-    const destQuarantine        = 45;                          // Row 31: fixed
-    const destHandling          = 85;                          // Row 32: fixed
+    // Charges from Excel "Australia Costs via Airfreight" — fixed values or weight-based
+    // Settings object (s) is passed in from Firestore; falls back to Excel defaults if missing
+    const electronicProcessing  = value > 10000
+      ? (s.air?.electronicProcessingOver10k  ?? 201)
+      : (s.air?.electronicProcessingUnder10k ?? 90);
+    const quarantineProcessing  = s.air?.quarantineProcessing          ?? 49;
+    const declarationCharge     = value > 10000
+      ? (s.air?.declarationOver10k           ?? 152)
+      : (s.air?.declarationUnder10k          ?? 50);
+    const airlineDocFee         = s.air?.destinationAirlineDocFee      ?? 80;
+    const customsClearance      = s.air?.customsClearanceFee           ?? 130;
+    const chainOfResponsibility = s.air?.chainOfResponsibility         ?? 10;
+    const cmrFee                = s.air?.cmrFee                        ?? 20;
+    const destQuarantine        = s.air?.destinationQuarantineProcessing ?? 45;
+    const destHandling          = s.air?.destinationHandling            ?? 85;
+    // Weight-based charges (editable in Settings → Australia)
+    const cargoOpsPerKg         = s.air?.destinationCargoTerminalOpsPerKg ?? 0.65;
+    const intlTermMin           = s.air?.destinationIntlTerminalMin        ?? 80;
+    const intlTermPerKg         = s.air?.destinationIntlTerminalPerKg      ?? 0.175;
+    const cargoTerminalOps      = weight * cargoOpsPerKg;
+    const intlTerminal          = Math.max(intlTermMin, weight * intlTermPerKg);
 
     const clearanceFixed =
       electronicProcessing +

@@ -25,8 +25,9 @@ const DEFAULTS = {
     customsClearanceFee:         130,
     chainOfResponsibility:        10,
     cmrFee:                       20,
-    destinationCargoTerminalOps: 104.65,
-    destinationIntlTerminal:      80,
+    destinationCargoTerminalOpsPerKg: 0.65,   // per kg rate (no minimum)
+    destinationIntlTerminalMin:       80,    // minimum charge (AUD)
+    destinationIntlTerminalPerKg:     0.175, // per kg rate
     destinationQuarantineProcessing: 45,
     destinationHandling:          85,
     electronicEntryProcessing:   201,
@@ -159,10 +160,44 @@ export default function AustraliaSettings() {
 
         {/* ── Air ── */}
         <Section title="Air Freight Charges (AUD)">
+          <p className="text-zinc-400 text-xs mb-4">
+            Threshold charges switch on AUD invoice value. Cargo Terminal Ops and International Terminal are weight-based.
+          </p>
           <div className="grid md:grid-cols-3 gap-4">
-            {Object.entries(settings.air).map(([k, v]) => (
-              <Num key={k} label={camel(k)} value={v} onChange={val => setNested("air", k, val)} />
-            ))}
+            <Num label="Electronic processing > AUD 10k" value={settings.air.electronicProcessingOver10k}  onChange={v => setNested("air","electronicProcessingOver10k",v)} />
+            <Num label="Electronic processing < AUD 10k" value={settings.air.electronicProcessingUnder10k} onChange={v => setNested("air","electronicProcessingUnder10k",v)} />
+            <Num label="Quarantine processing (fixed)"    value={settings.air.quarantineProcessing}         onChange={v => setNested("air","quarantineProcessing",v)} />
+            <Num label="Declaration > AUD 10k"            value={settings.air.declarationOver10k}           onChange={v => setNested("air","declarationOver10k",v)} />
+            <Num label="Declaration < AUD 10k"            value={settings.air.declarationUnder10k}          onChange={v => setNested("air","declarationUnder10k",v)} />
+            <Num label="Airline document fee (fixed)"     value={settings.air.destinationAirlineDocFee}     onChange={v => setNested("air","destinationAirlineDocFee",v)} />
+            <Num label="Customs clearance fee (fixed)"    value={settings.air.customsClearanceFee}          onChange={v => setNested("air","customsClearanceFee",v)} />
+            <Num label="Chain of responsibility (fixed)"  value={settings.air.chainOfResponsibility}        onChange={v => setNested("air","chainOfResponsibility",v)} />
+            <Num label="CMR fee (fixed)"                  value={settings.air.cmrFee}                       onChange={v => setNested("air","cmrFee",v)} />
+            <Num label="Destination quarantine (fixed)"   value={settings.air.destinationQuarantineProcessing} onChange={v => setNested("air","destinationQuarantineProcessing",v)} />
+            <Num label="Destination handling (fixed)"     value={settings.air.destinationHandling}          onChange={v => setNested("air","destinationHandling",v)} />
+          </div>
+
+          <div className="mt-6 border-t border-zinc-700 pt-4">
+            <h3 className="text-sm font-bold text-zinc-300 mb-1">Cargo Terminal Ops</h3>
+            <p className="text-zinc-500 text-xs mb-3">Charged per kg — no fixed minimum. Formula: weight × rate</p>
+            <div className="grid md:grid-cols-3 gap-4">
+              <Num label="Rate per kg (AUD)" value={settings.air.destinationCargoTerminalOpsPerKg} step="0.001" onChange={v => setNested("air","destinationCargoTerminalOpsPerKg",v)} />
+            </div>
+            <div className="mt-2 p-3 bg-zinc-800 rounded-xl text-xs text-zinc-400">
+              Example: 161 kg × {settings.air.destinationCargoTerminalOpsPerKg} = AUD {(161 * (settings.air.destinationCargoTerminalOpsPerKg||0)).toFixed(2)}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <h3 className="text-sm font-bold text-zinc-300 mb-1">International Terminal</h3>
+            <p className="text-zinc-500 text-xs mb-3">Formula: max(minimum, weight × rate per kg)</p>
+            <div className="grid md:grid-cols-3 gap-4">
+              <Num label="Minimum charge (AUD)"  value={settings.air.destinationIntlTerminalMin}   onChange={v => setNested("air","destinationIntlTerminalMin",v)} />
+              <Num label="Rate per kg (AUD)"     value={settings.air.destinationIntlTerminalPerKg} step="0.001" onChange={v => setNested("air","destinationIntlTerminalPerKg",v)} />
+            </div>
+            <div className="mt-2 p-3 bg-zinc-800 rounded-xl text-xs text-zinc-400">
+              Example: max({settings.air.destinationIntlTerminalMin}, 161 kg × {settings.air.destinationIntlTerminalPerKg}) = AUD {Math.max(settings.air.destinationIntlTerminalMin||0, 161*(settings.air.destinationIntlTerminalPerKg||0)).toFixed(2)}
+            </div>
           </div>
         </Section>
 
@@ -227,11 +262,11 @@ function Section({ title, children }) {
   );
 }
 
-function Num({ label, value, onChange }) {
+function Num({ label, value, onChange, step = "0.01" }) {
   return (
     <div>
       <label className="block text-xs text-zinc-400 mb-1">{label}</label>
-      <input type="number" step="0.01" value={value ?? ""}
+      <input type="number" step={step} value={value ?? ""
         onChange={e => onChange(e.target.value)}
         className="w-full p-3 rounded-xl bg-zinc-800 text-sm" />
     </div>
