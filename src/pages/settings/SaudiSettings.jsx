@@ -32,7 +32,7 @@ export default function SaudiSettings() {
   return (
     <div className="flex bg-zinc-950 text-white min-h-screen"><Sidebar />
       <div className="flex-1 p-8 max-w-3xl">
-        <h1 className="text-3xl font-bold text-fuchsia-500 mb-6">Saudi Arabia Settings</h1>
+        <h1 className="text-2xl font-bold text-white mb-6">Saudi Arabia Settings</h1>
         <div className="bg-zinc-900 rounded-2xl p-6 space-y-4">
           {[
             ["Duty rate (%)", "dutyRate"],

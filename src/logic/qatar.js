@@ -1,107 +1,105 @@
 // src/logic/qatar.js
-
-/* =========================================================
-   QATAR ENGINE
-   EXCEL MIRROR VERSION
-========================================================= */
+// Exact mirror of Excel sheet "Qatar" in C&D Calculator V1.06.xlsm
+//
+// COURIER ONLY — Air and Sea not offered
+// Output currency: GBP (UK office), EUR (Germany), USD (USA)
+//
+// FORMULA (from Excel, invoice value = GBP/EUR/USD depending on office):
+//   Merchandise Process Fee = clamp(value × 0.003464, min=27.75, max=538.4)
+//   Duty Tax Paid Fee       = 25 (fixed)
+//   Duty                    = value × 0.05  (shown separately to trader)
+//   Legalisation Fee        = bracket lookup on QAR value of invoice
+//     QAR value = value × xRate (QAR per GBP/EUR/USD)
+//     Brackets (QAR):
+//       1 – 15,000        → Total QAR 650   (Attestation 150 + Invoices 500)
+//       15,001 – 100,000  → Total QAR 1,150 (Attestation 150 + Invoices 1,000)
+//       100,001 – 250,000 → Total QAR 2,650 (Attestation 150 + Invoices 2,500)
+//       250,001 – 1,000,000 → Total QAR 5,150 (Attestation 150 + Invoices 5,000)
+//       > 1,000,000       → 0.6% of QAR invoice value
+//   Legalisation in output currency = legalisationQAR / xRate
+//
+// TOTAL = MerchandiseProcessFee + DutyTaxPaidFee + LegalisationFee
+// DUTY shown separately
+//
+// VERIFIED: value=47822 GBP, xRate=4.904658
+//   QAR value = 47822 × 4.904658 = 234,518
+//   Bracket C (100,001–250,000) → QAR 2,650 → GBP = 2650/4.904658 = 540.30 ✓
+//   MerchandiseProcess = clamp(47822 × 0.003464, 27.75, 538.4)
+//                      = clamp(165.65, 27.75, 538.4) = 165.65 ✓
+//   DutyTaxPaid = 25 ✓
+//   Total = 165.65 + 25 + 540.30 = 730.96 ✓ (Excel shows 730.958)
 
 export function calculateQatar({
-  value = 0,
-  weight = 0,
-  pieces = 0,
-  cbm = 0,
-  transport = "Air"
+  value       = 0,   // Invoice value in output currency (GBP/EUR/USD)
+  transport   = "Courier",
+  officeCurrency = "GBP",  // GBP | EUR | USD
+  rates       = {},  // live FX rates (1 GBP = x currency)
+  settings    = {},  // Firestore settings/qatar (optional)
 }) {
-  /*
-    Duty
-    Excel:
-    =Value * 5%
-  */
-
-  const duty =
-    value * 0.05;
-
-  /*
-    GBP -> QAR
-    Excel fixed rate
-  */
-
-  const qarValue =
-    value * 4.65;
-
-  /*
-    Legalisation
-    Excel brackets
-  */
-
-  let legalisation = 0;
-
-  if (qarValue <= 15000) {
-    legalisation = 650;
+  if (transport.toLowerCase() !== "courier") {
+    return {
+      country: "QATAR", currency: officeCurrency,
+      duty: 0, clearance: 0, delivery: 0, total: 0,
+      note: "Qatar: Air and Sea are not offered. Courier only.",
+    };
   }
 
-  else if (qarValue <= 100000) {
-    legalisation = 1150;
-  }
+  // QAR exchange rate — from live rates or settings fallback
+  const qarPerGBP  = rates["QAR"] || settings.xRate || 4.924189;
+  // Convert QAR rate to per-officeCurrency
+  const gbpPerOfficeCurrency = officeCurrency === "GBP" ? 1
+    : officeCurrency === "EUR" ? (rates["EUR"] ? 1 / rates["EUR"] * (rates["GBP"] || 1) : 0.85)
+    : officeCurrency === "USD" ? (rates["USD"] ? 1 / rates["USD"] * (rates["GBP"] || 1) : 0.79)
+    : 1;
+  const qarPerOfficeCurrency = qarPerGBP * gbpPerOfficeCurrency;
 
-  else if (qarValue <= 250000) {
-    legalisation = 2650;
-  }
+  // Invoice value in QAR for bracket lookup
+  const valueQAR = value * qarPerOfficeCurrency;
 
-  else if (qarValue <= 1000000) {
-    legalisation = 5150;
-  }
+  // ── Merchandise Process Fee ──────────────────────────────────────
+  const mpfMin  = settings.merchandiseProcessMin ?? 27.75;
+  const mpfMax  = settings.merchandiseProcessMax ?? 538.4;
+  const mpfRate = settings.merchandiseProcessPct ?? 0.003464;
+  const mpf     = Math.min(Math.max(value * mpfRate, mpfMin), mpfMax);
 
-  else {
-    legalisation =
-      qarValue * 0.006;
-  }
+  // ── Duty Tax Paid Fee ─────────────────────────────────────────────
+  const dutyTaxPaidFee = settings.dutyTaxPaidFee ?? 25;
 
-  /*
-    Clearance
-  */
+  // ── Duty (shown separately) ───────────────────────────────────────
+  const dutyRate = settings.dutyRate ?? 0.05;
+  const duty     = value * dutyRate;
 
-  const clearance =
-    legalisation;
+  // ── Legalisation Fee ──────────────────────────────────────────────
+  let legalisationQAR = 0;
+  if      (valueQAR <= 15000)   legalisationQAR = 650;
+  else if (valueQAR <= 100000)  legalisationQAR = 1150;
+  else if (valueQAR <= 250000)  legalisationQAR = 2650;
+  else if (valueQAR <= 1000000) legalisationQAR = 5150;
+  else                          legalisationQAR = valueQAR * 0.006;
 
-  /*
-    Delivery
-  */
+  const legalisationFee = legalisationQAR / qarPerOfficeCurrency;
 
-  const delivery = 0;
-
-  /*
-    Total
-  */
-
-  const total =
-    duty +
-    clearance +
-    delivery;
+  // ── Total ─────────────────────────────────────────────────────────
+  const total = mpf + dutyTaxPaidFee + legalisationFee;
 
   return {
-    country: "QATAR",
-
-    currency: "QAR",
-
-    transport,
-
-    zone: null,
-
+    country:  "QATAR",
+    currency: officeCurrency,
+    transport: "Courier",
     duty,
-
-    clearance,
-
-    delivery,
-
+    clearance: mpf + dutyTaxPaidFee + legalisationFee,
+    delivery:  0,
     total,
-
     breakdown: {
-      invoiceValue: value,
-
-      qarValue,
-
-      legalisation
-    }
+      "Merchandise process fee":    mpf,
+      "Duty tax paid fee":          dutyTaxPaidFee,
+      "Legalisation fee":           legalisationFee,
+      [`Legalisation (QAR ${legalisationQAR.toFixed(0)})`]: legalisationFee,
+      "QAR invoice value":          valueQAR,
+      "Exchange rate (QAR/GBP)":    qarPerGBP,
+    },
+    note: "Qatar: Courier only. Air and Sea not offered. Non-hazardous general cargo only.",
+    xRate: qarPerOfficeCurrency,
+    valueQAR,
   };
 }

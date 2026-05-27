@@ -96,6 +96,7 @@ export default function Users() {
   const [search, setSearch]     = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId]     = useState(null);
+  const [editIndex, setEditIndex] = useState(null);
   const [saving, setSaving]     = useState(false);
   const [seeding, setSeeding]   = useState(false);
   const [seedMsg, setSeedMsg]   = useState("");
@@ -116,10 +117,12 @@ export default function Users() {
   function resetForm() {
     setForm({ name: "", email: "", role: "user", office: "UK", currency: "GBP", active: true });
     setEditId(null);
+    setEditIndex(null);
     setShowForm(false);
   }
 
-  function startEdit(u) {
+  function startEdit(u, idx) {
+    setEditIndex(idx);
     setForm({
       name: u.name || "", email: u.email || "",
       role: u.role || "user", office: u.office || "UK",
@@ -127,6 +130,7 @@ export default function Users() {
     });
     setEditId(u.id);
     setShowForm(true);
+    window.scrollTo(0, 0); // handled by inline render
   }
 
   async function save() {
@@ -234,8 +238,8 @@ export default function Users() {
           with their email and a temporary password. When they first sign in, their Firestore profile is linked automatically.
         </div>
 
-        {/* Add/Edit form */}
-        {showForm && (
+        {/* Add form — only shown at top for new users */}
+        {showForm && !editId && (
           <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 mb-6">
             <h2 className="text-base font-semibold mb-4">{editId ? "Edit User" : "Add User"}</h2>
             <div className="grid md:grid-cols-3 gap-4 mb-4">
@@ -312,7 +316,7 @@ export default function Users() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
-                        <button onClick={() => startEdit(u)}
+                        <button onClick={() => startEdit(u, i)}
                           className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs">Edit</button>
                         <button onClick={() => toggleActive(u)}
                           className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs">
@@ -323,6 +327,41 @@ export default function Users() {
                       </div>
                     </td>
                   </tr>
+                  {/* Inline edit form — appears below clicked row */}
+                  {showForm && editId === u.id && (
+                    <tr key={u.id + "-edit"}>
+                      <td colSpan={7} className="px-0 py-0">
+                        <div className="bg-slate-800 border-t border-b border-[#C4006A]/40 p-5">
+                          <h3 className="text-sm font-semibold mb-3 text-[#f472b6]">Edit: {u.name}</h3>
+                          <div className="grid md:grid-cols-3 gap-3 mb-3">
+                            <Field label="Full name"     value={form.name}  onChange={v => setForm(p => ({...p, name: v}))} />
+                            <Field label="Email address" value={form.email} onChange={v => setForm(p => ({...p, email: v}))} type="email" />
+                            <SelectField label="Role"     value={form.role}     onChange={v => setForm(p => ({...p, role: v}))}     options={ROLE_OPTIONS} />
+                            <SelectField label="Office"   value={form.office}   onChange={v => setForm(p => ({...p, office: v}))}   options={OFFICE_OPTIONS} />
+                            <SelectField label="Currency" value={form.currency} onChange={v => setForm(p => ({...p, currency: v}))} options={CURRENCY_OPTIONS} />
+                            <div className="flex items-end pb-1">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked={form.active}
+                                  onChange={e => setForm(p => ({...p, active: e.target.checked}))}
+                                  className="w-4 h-4 rounded border-slate-600" />
+                                <span className="text-sm text-slate-300">Active account</span>
+                              </label>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={save} disabled={saving}
+                              className="px-4 py-2 bg-[#C4006A] hover:bg-[#a3005a] rounded-lg text-sm font-semibold">
+                              {saving ? "Saving…" : "Save"}
+                            </button>
+                            <button onClick={resetForm}
+                              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 ))}
               </tbody>
             </table>

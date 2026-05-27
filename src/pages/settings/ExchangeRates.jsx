@@ -105,7 +105,7 @@ export default function ExchangeRates() {
       <Sidebar />
       <div className="flex-1 p-8 max-w-3xl">
 
-        <h1 className="text-3xl font-bold text-fuchsia-500 mb-2">Exchange Rates</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">Exchange Rates</h1>
         <p className="text-zinc-400 text-sm mb-6">
           Rates are fetched daily from free public APIs (no key required) with automatic fallback.
           All rates: <strong>1 GBP = X foreign currency</strong>.
@@ -217,26 +217,6 @@ export default function ExchangeRates() {
           <p className="text-xs text-zinc-500 mt-3">
             These are only used when the live feed and cache both fail. Live rates always take priority.
           </p>
-        </div>
-
-        {/* How it works */}
-        <div className="bg-zinc-800 rounded-xl p-4 text-xs text-zinc-400 mt-6 space-y-1">
-          <div className="font-bold text-zinc-300 text-sm mb-2">How the fallback chain works</div>
-          {[
-            ["1", "Firestore cache",          "Today's rates already fetched — instant load"],
-            ["2", "open.er-api.com",          "Free, no key, CORS-enabled, ECB-aligned data"],
-            ["3", "exchangerate-api.com",     "Free tier, no key required, CORS-enabled"],
-            ["4", "fawazahmed0 jsDelivr CDN", "Static JSON on CDN — extremely reliable"],
-            ["5", "fawazahmed0 Cloudflare",   "Backup CDN for the same dataset"],
-            ["6", "Manual rates (above)",     "Admin-set rates saved here in Firestore"],
-            ["7", "Hardcoded fallback",       "Built-in approximate rates — app never breaks"],
-          ].map(([n, src, desc]) => (
-            <div key={n} className="flex gap-2">
-              <span className="text-fuchsia-400 font-bold w-4">{n}.</span>
-              <span className="text-zinc-300 w-40 shrink-0">{src}</span>
-              <span>{desc}</span>
-            </div>
-          ))}
         </div>
 
       </div>
