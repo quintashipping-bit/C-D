@@ -1,5 +1,5 @@
 // src/pages/Users.jsx
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   collection, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp
 } from "firebase/firestore";
@@ -288,8 +288,9 @@ export default function Users() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(u => (
-                  <tr key={u.id} className={`border-b border-slate-800/40 hover:bg-slate-800/30 ${u.active === false ? "opacity-40" : ""}`}>
+                {filtered.map((u, i) => (
+                  <React.Fragment key={u.id}>
+                  <tr className={`border-b border-slate-800/40 hover:bg-slate-800/30 ${u.active === false ? "opacity-40" : ""}`}>
                     <td className="px-4 py-3 font-medium">{u.name}</td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{u.email}</td>
                     <td className="px-4 py-3 text-slate-400">{u.office || "UK"}</td>
@@ -362,6 +363,7 @@ export default function Users() {
                       </td>
                     </tr>
                   )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
