@@ -266,8 +266,7 @@ function Num({ label, value, onChange, step = "0.01" }) {
   return (
     <div>
       <label className="block text-xs text-zinc-400 mb-1">{label}</label>
-      <input type="number" step={step} value={value ?? ""
-        onChange={e => onChange(e.target.value)}
+      <input type="number" step={step} value={value ?? ""} onChange={e => onChange(e.target.value)}
         className="w-full p-3 rounded-xl bg-zinc-800 text-sm" />
     </div>
   );
