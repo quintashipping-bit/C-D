@@ -62,7 +62,7 @@ export default function SingaporeSettings() {
   function setSea(k, v)  { setSettings(p => ({ ...p, sea:  { ...p.sea,  [k]: Number(v) } })); }
   function setNotes(v)   { setSettings(p => ({ ...p, notes: v })); }
 
-  if (loading) return <Shell><div className="p-10 text-zinc-400">Loading…</div></Shell>;
+  if (loading) return <Shell><div className="p-10 text-slate-400">Loading…</div></Shell>;
 
   const airTotal = Object.values(settings.air).reduce((a, b) => a + Number(b), 0);
   const seaFixed = Object.entries(settings.sea)
@@ -74,7 +74,7 @@ export default function SingaporeSettings() {
       <div className="flex-1 p-8 max-w-4xl">
 
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-fuchsia-500">Singapore Settings</h1>
+          <h1 className="text-2xl font-bold text-white">Singapore Settings</h1>
           <button onClick={save} disabled={saving}
             className="bg-fuchsia-700 hover:bg-fuchsia-800 px-6 py-3 rounded-xl font-bold">
             {saving ? "Saving…" : saved ? "✓ Saved!" : "Save Settings"}
@@ -91,7 +91,7 @@ export default function SingaporeSettings() {
             <Num label="Terminal charge"      value={settings.air.terminalCharge}       onChange={v => setAir("terminalCharge", v)} />
             <Num label="Agency charge"        value={settings.air.agencyCharge}         onChange={v => setAir("agencyCharge", v)} />
           </div>
-          <div className="mt-3 p-3 bg-zinc-800 rounded-xl text-sm text-zinc-300">
+          <div className="mt-3 p-3 bg-slate-800 rounded-xl text-sm text-slate-300">
             <strong>Total Air:</strong> SGD {airTotal.toFixed(2)} (fixed — no variable components for air)
           </div>
         </Section>
@@ -111,7 +111,7 @@ export default function SingaporeSettings() {
             <Num label="Charges outlayed"    value={settings.sea.chargesOutlayed}     onChange={v => setSea("chargesOutlayed", v)} />
             <Num label="Per CBM rate (SGD)"  value={settings.sea.perCbmRate}          onChange={v => setSea("perCbmRate", v)} />
           </div>
-          <div className="mt-3 p-3 bg-zinc-800 rounded-xl text-sm text-zinc-300">
+          <div className="mt-3 p-3 bg-slate-800 rounded-xl text-sm text-slate-300">
             <strong>Total Sea:</strong> SGD {seaFixed.toFixed(2)} fixed + SGD {settings.sea.perCbmRate} per CBM
           </div>
         </Section>
@@ -129,7 +129,7 @@ export default function SingaporeSettings() {
             rows={4}
             value={settings.notes}
             onChange={e => setNotes(e.target.value)}
-            className="w-full p-3 rounded-xl bg-zinc-800 text-sm"
+            className="w-full p-3 rounded-xl bg-slate-800 text-sm"
           />
         </Section>
 
@@ -143,12 +143,12 @@ export default function SingaporeSettings() {
 }
 
 function Shell({ children }) {
-  return <div className="flex bg-zinc-950 text-white min-h-screen"><Sidebar />{children}</div>;
+  return <div className="flex bg-slate-950 text-white min-h-screen"><Sidebar />{children}</div>;
 }
 function Section({ title, children }) {
   return (
-    <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
-      <h2 className="text-lg font-bold text-zinc-200 mb-4 border-b border-zinc-800 pb-2">{title}</h2>
+    <div className="bg-slate-900 rounded-xl p-6 mb-6">
+      <h2 className="text-lg font-bold text-slate-200 mb-4 border-b border-slate-800 pb-2">{title}</h2>
       {children}
     </div>
   );
@@ -156,10 +156,10 @@ function Section({ title, children }) {
 function Num({ label, value, onChange }) {
   return (
     <div>
-      <label className="block text-xs text-zinc-400 mb-1">{label}</label>
+      <label className="block text-xs text-slate-400 mb-1">{label}</label>
       <input type="number" step="0.01" value={value ?? ""}
         onChange={e => onChange(e.target.value)}
-        className="w-full p-3 rounded-xl bg-zinc-800 text-sm" />
+        className="w-full p-3 rounded-xl bg-slate-800 text-sm" />
     </div>
   );
 }

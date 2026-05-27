@@ -95,18 +95,18 @@ export default function ExchangeRates() {
   const CACHE_KEY = "fxRatesCache";
 
   if (loading) return (
-    <div className="flex bg-zinc-950 text-white min-h-screen">
-      <Sidebar /><div className="p-10 text-zinc-400">Loading exchange rates…</div>
+    <div className="flex bg-slate-950 text-white min-h-screen">
+      <Sidebar /><div className="p-10 text-slate-400">Loading exchange rates…</div>
     </div>
   );
 
   return (
-    <div className="flex bg-zinc-950 text-white min-h-screen">
+    <div className="flex bg-slate-950 text-white min-h-screen">
       <Sidebar />
       <div className="flex-1 p-8 max-w-3xl">
 
         <h1 className="text-2xl font-bold text-white mb-2">Exchange Rates</h1>
-        <p className="text-zinc-400 text-sm mb-6">
+        <p className="text-slate-400 text-sm mb-6">
           Rates are fetched daily from free public APIs (no key required) with automatic fallback.
           All rates: <strong>1 GBP = X foreign currency</strong>.
         </p>
@@ -132,56 +132,56 @@ export default function ExchangeRates() {
                src === "manual"   ? "Using admin-set manual rates (all live APIs failed)" :
                                     "Using hardcoded fallback rates — all sources failed"}
             </div>
-            <div className="text-xs text-zinc-400 mt-1">
+            <div className="text-xs text-slate-400 mt-1">
               Date: {rates?._date}
               {rates?._cached ? " · Read from Firestore cache" : " · Freshly fetched"}
             </div>
           </div>
           <button onClick={forceRefresh} disabled={refreshing}
-            className="bg-zinc-700 hover:bg-zinc-600 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap">
+            className="bg-slate-700 hover:bg-zinc-600 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap">
             {refreshing ? "Refreshing…" : "🔄 Force refresh"}
           </button>
         </div>
 
         {/* Rates table */}
-        <div className="bg-zinc-900 rounded-2xl overflow-hidden mb-8">
-          <div className="px-4 py-3 border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
+        <div className="bg-slate-900 rounded-xl overflow-hidden mb-8">
+          <div className="px-4 py-3 border-b border-slate-800 text-xs text-slate-500 uppercase tracking-wider">
             Current rates
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left p-4 text-zinc-400 font-medium">Currency</th>
-                <th className="text-left p-4 text-zinc-400 font-medium">Used for</th>
-                <th className="text-right p-4 text-zinc-400 font-medium">1 GBP =</th>
-                <th className="text-right p-4 text-zinc-400 font-medium">1 unit = GBP</th>
+              <tr className="border-b border-slate-800">
+                <th className="text-left p-4 text-slate-400 font-medium">Currency</th>
+                <th className="text-left p-4 text-slate-400 font-medium">Used for</th>
+                <th className="text-right p-4 text-slate-400 font-medium">1 GBP =</th>
+                <th className="text-right p-4 text-slate-400 font-medium">1 unit = GBP</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-zinc-800/40 bg-zinc-800/20">
+              <tr className="border-b border-slate-800/40 bg-slate-800/20">
                 <td className="p-4"><div className="flex items-center gap-2"><span>🇬🇧</span><span className="font-bold">GBP</span></div></td>
-                <td className="p-4 text-zinc-400 text-xs">UK office</td>
+                <td className="p-4 text-slate-400 text-xs">UK office</td>
                 <td className="p-4 text-right font-mono">1.0000</td>
-                <td className="p-4 text-right font-mono text-zinc-500">£1.0000</td>
+                <td className="p-4 text-right font-mono text-slate-500">£1.0000</td>
               </tr>
               {CURRENCIES.map(({ code, name, flag, usedFor }) => {
                 const r = rates?.[code];
                 return (
-                  <tr key={code} className="border-b border-zinc-800/40 hover:bg-zinc-800/20">
+                  <tr key={code} className="border-b border-slate-800/40 hover:bg-slate-800/20">
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         <span>{flag}</span>
                         <div>
                           <div className="font-bold">{code}</div>
-                          <div className="text-xs text-zinc-500">{name}</div>
+                          <div className="text-xs text-slate-500">{name}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 text-xs text-zinc-400">{usedFor}</td>
+                    <td className="p-4 text-xs text-slate-400">{usedFor}</td>
                     <td className="p-4 text-right font-mono font-bold text-fuchsia-300">
                       {r ? r.toFixed(4) : <span className="text-red-400">missing</span>}
                     </td>
-                    <td className="p-4 text-right font-mono text-zinc-400">
+                    <td className="p-4 text-right font-mono text-slate-400">
                       {r ? `£${(1 / r).toFixed(4)}` : "—"}
                     </td>
                   </tr>
@@ -192,20 +192,20 @@ export default function ExchangeRates() {
         </div>
 
         {/* Manual fallback rates */}
-        <div className="bg-zinc-900 rounded-2xl p-6">
+        <div className="bg-slate-900 rounded-xl p-6">
           <h2 className="text-lg font-bold mb-1">Manual fallback rates</h2>
-          <p className="text-zinc-400 text-sm mb-4">
+          <p className="text-slate-400 text-sm mb-4">
             These are used automatically if all live APIs fail. Keep them roughly up to date.
           </p>
           <div className="grid grid-cols-2 gap-3 mb-4">
             {CURRENCIES.map(({ code, flag }) => (
               <div key={code}>
-                <label className="block text-xs text-zinc-400 mb-1">{flag} 1 GBP = {code}</label>
+                <label className="block text-xs text-slate-400 mb-1">{flag} 1 GBP = {code}</label>
                 <input
                   type="number" step="0.0001"
                   value={manual[code] ?? ""}
                   onChange={e => setManual(p => ({ ...p, [code]: e.target.value }))}
-                  className="w-full p-3 rounded-xl bg-zinc-800 text-sm font-mono"
+                  className="w-full p-3 rounded-xl bg-slate-800 text-sm font-mono"
                 />
               </div>
             ))}
@@ -214,7 +214,7 @@ export default function ExchangeRates() {
             className="bg-fuchsia-700 hover:bg-fuchsia-800 px-6 py-3 rounded-xl font-bold">
             {savingManual ? "Saving…" : manualSaved ? "✓ Saved!" : "Save manual rates"}
           </button>
-          <p className="text-xs text-zinc-500 mt-3">
+          <p className="text-xs text-slate-500 mt-3">
             These are only used when the live feed and cache both fail. Live rates always take priority.
           </p>
         </div>

@@ -115,13 +115,13 @@ export default function AustraliaSettings() {
     }));
   }
 
-  if (loading) return <Shell><div className="p-10 text-zinc-400">Loading settings…</div></Shell>;
+  if (loading) return <Shell><div className="p-10 text-slate-400">Loading settings…</div></Shell>;
 
   return (
     <Shell>
       <div className="flex-1 p-8 max-w-5xl">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-fuchsia-500">Australia Settings</h1>
+          <h1 className="text-2xl font-bold text-white">Australia Settings</h1>
           <button
             onClick={save}
             disabled={saving}
@@ -131,7 +131,7 @@ export default function AustraliaSettings() {
           </button>
         </div>
 
-        <p className="text-zinc-400 text-sm mb-6">
+        <p className="text-slate-400 text-sm mb-6">
           All values sourced from the C&D Calculator Excel spreadsheet. Edit and save to override.
         </p>
 
@@ -160,7 +160,7 @@ export default function AustraliaSettings() {
 
         {/* ── Air ── */}
         <Section title="Air Freight Charges (AUD)">
-          <p className="text-zinc-400 text-xs mb-4">
+          <p className="text-slate-400 text-xs mb-4">
             Threshold charges switch on AUD invoice value. Cargo Terminal Ops and International Terminal are weight-based.
           </p>
           <div className="grid md:grid-cols-3 gap-4">
@@ -177,25 +177,25 @@ export default function AustraliaSettings() {
             <Num label="Destination handling (fixed)"     value={settings.air.destinationHandling}          onChange={v => setNested("air","destinationHandling",v)} />
           </div>
 
-          <div className="mt-6 border-t border-zinc-700 pt-4">
-            <h3 className="text-sm font-bold text-zinc-300 mb-1">Cargo Terminal Ops</h3>
-            <p className="text-zinc-500 text-xs mb-3">Charged per kg — no fixed minimum. Formula: weight × rate</p>
+          <div className="mt-6 border-t border-slate-700 pt-4">
+            <h3 className="text-sm font-bold text-slate-300 mb-1">Cargo Terminal Ops</h3>
+            <p className="text-slate-500 text-xs mb-3">Charged per kg — no fixed minimum. Formula: weight × rate</p>
             <div className="grid md:grid-cols-3 gap-4">
               <Num label="Rate per kg (AUD)" value={settings.air.destinationCargoTerminalOpsPerKg} step="0.001" onChange={v => setNested("air","destinationCargoTerminalOpsPerKg",v)} />
             </div>
-            <div className="mt-2 p-3 bg-zinc-800 rounded-xl text-xs text-zinc-400">
+            <div className="mt-2 p-3 bg-slate-800 rounded-xl text-xs text-slate-400">
               Example: 161 kg × {settings.air.destinationCargoTerminalOpsPerKg} = AUD {(161 * (settings.air.destinationCargoTerminalOpsPerKg||0)).toFixed(2)}
             </div>
           </div>
 
           <div className="mt-4">
-            <h3 className="text-sm font-bold text-zinc-300 mb-1">International Terminal</h3>
-            <p className="text-zinc-500 text-xs mb-3">Formula: max(minimum, weight × rate per kg)</p>
+            <h3 className="text-sm font-bold text-slate-300 mb-1">International Terminal</h3>
+            <p className="text-slate-500 text-xs mb-3">Formula: max(minimum, weight × rate per kg)</p>
             <div className="grid md:grid-cols-3 gap-4">
               <Num label="Minimum charge (AUD)"  value={settings.air.destinationIntlTerminalMin}   onChange={v => setNested("air","destinationIntlTerminalMin",v)} />
               <Num label="Rate per kg (AUD)"     value={settings.air.destinationIntlTerminalPerKg} step="0.001" onChange={v => setNested("air","destinationIntlTerminalPerKg",v)} />
             </div>
-            <div className="mt-2 p-3 bg-zinc-800 rounded-xl text-xs text-zinc-400">
+            <div className="mt-2 p-3 bg-slate-800 rounded-xl text-xs text-slate-400">
               Example: max({settings.air.destinationIntlTerminalMin}, 161 kg × {settings.air.destinationIntlTerminalPerKg}) = AUD {Math.max(settings.air.destinationIntlTerminalMin||0, 161*(settings.air.destinationIntlTerminalPerKg||0)).toFixed(2)}
             </div>
           </div>
@@ -212,25 +212,25 @@ export default function AustraliaSettings() {
 
         {/* ── Delivery zones ── */}
         <Section title="Local Delivery Zones (AUD)">
-          <p className="text-zinc-400 text-sm mb-4">
+          <p className="text-slate-400 text-sm mb-4">
             These are the local delivery rates per zone code used in the calculator. Each customer is assigned a zone in the Customers page.
           </p>
           <div className="space-y-3">
-            <div className="grid grid-cols-4 gap-3 text-xs text-zinc-500 uppercase tracking-wider px-1">
+            <div className="grid grid-cols-4 gap-3 text-xs text-slate-500 uppercase tracking-wider px-1">
               <span>Zone code</span><span>City / label</span><span>Base delivery rate</span><span>Rate per kg (after threshold)</span>
             </div>
             {Object.entries(settings.deliveryZones).map(([code, z]) => (
-              <div key={code} className="grid grid-cols-4 gap-3 items-center bg-zinc-800 rounded-xl p-3">
+              <div key={code} className="grid grid-cols-4 gap-3 items-center bg-slate-800 rounded-xl p-3">
                 <span className="font-mono font-bold text-fuchsia-400">{code}</span>
                 <input value={z.label} onChange={e => setZoneField(code, "label", e.target.value)}
-                  className="p-2 rounded-lg bg-zinc-700 text-sm" />
+                  className="p-2 rounded-lg bg-slate-700 text-sm" />
                 <input type="number" step="0.01"
                   value={z.baseRate ?? ""} onChange={e => setZoneField(code, "baseRate", e.target.value)}
-                  className="p-2 rounded-lg bg-zinc-700 text-sm" />
+                  className="p-2 rounded-lg bg-slate-700 text-sm" />
                 <input type="number" step="0.0001"
                   value={z.perKgAfter5kg ?? z.perKgAfter20kg ?? ""}
                   onChange={e => setZoneField(code, z.perKgAfter20kg !== undefined ? "perKgAfter20kg" : "perKgAfter5kg", e.target.value)}
-                  className="p-2 rounded-lg bg-zinc-700 text-sm" />
+                  className="p-2 rounded-lg bg-slate-700 text-sm" />
               </div>
             ))}
           </div>
@@ -250,13 +250,13 @@ export default function AustraliaSettings() {
 
 /* ── Helpers ── */
 function Shell({ children }) {
-  return <div className="flex bg-zinc-950 text-white min-h-screen"><Sidebar />{children}</div>;
+  return <div className="flex bg-slate-950 text-white min-h-screen"><Sidebar />{children}</div>;
 }
 
 function Section({ title, children }) {
   return (
-    <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
-      <h2 className="text-lg font-bold text-zinc-200 mb-4 border-b border-zinc-800 pb-2">{title}</h2>
+    <div className="bg-slate-900 rounded-xl p-6 mb-6">
+      <h2 className="text-lg font-bold text-slate-200 mb-4 border-b border-slate-800 pb-2">{title}</h2>
       {children}
     </div>
   );
@@ -265,9 +265,9 @@ function Section({ title, children }) {
 function Num({ label, value, onChange, step = "0.01" }) {
   return (
     <div>
-      <label className="block text-xs text-zinc-400 mb-1">{label}</label>
+      <label className="block text-xs text-slate-400 mb-1">{label}</label>
       <input type="number" step={step} value={value ?? ""} onChange={e => onChange(e.target.value)}
-        className="w-full p-3 rounded-xl bg-zinc-800 text-sm" />
+        className="w-full p-3 rounded-xl bg-slate-800 text-sm" />
     </div>
   );
 }

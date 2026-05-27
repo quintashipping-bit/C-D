@@ -28,12 +28,12 @@ export default function SaudiSettings() {
     catch (e) { alert("Failed"); }
     setSaving(false);
   }
-  if (loading) return <div className="flex bg-zinc-950 text-white min-h-screen"><Sidebar /><div className="p-10">Loading...</div></div>;
+  if (loading) return <div className="flex bg-slate-950 text-white min-h-screen"><Sidebar /><div className="p-10">Loading...</div></div>;
   return (
-    <div className="flex bg-zinc-950 text-white min-h-screen"><Sidebar />
+    <div className="flex bg-slate-950 text-white min-h-screen"><Sidebar />
       <div className="flex-1 p-8 max-w-3xl">
         <h1 className="text-2xl font-bold text-white mb-6">Saudi Arabia Settings</h1>
-        <div className="bg-zinc-900 rounded-2xl p-6 space-y-4">
+        <div className="bg-slate-900 rounded-xl p-6 space-y-4">
           {[
             ["Duty rate (%)", "dutyRate"],
             ["Clearance rate (% of value)", "clearanceRate"],
@@ -42,10 +42,10 @@ export default function SaudiSettings() {
             ["Flat delivery fee (SAR)", "deliveryFlat"]
           ].map(([label, key]) => (
             <div key={key}>
-              <label className="block text-sm text-zinc-400 mb-1">{label}</label>
+              <label className="block text-sm text-slate-400 mb-1">{label}</label>
               <input type="number" step="0.0001" value={settings[key]}
                 onChange={e => setSettings(p => ({...p, [key]: Number(e.target.value)}))}
-                className="w-full p-3 rounded-xl bg-zinc-800" />
+                className="w-full p-3 rounded-xl bg-slate-800" />
             </div>
           ))}
           <button onClick={save} disabled={saving} className="bg-fuchsia-700 hover:bg-fuchsia-800 px-6 py-3 rounded-xl font-bold">

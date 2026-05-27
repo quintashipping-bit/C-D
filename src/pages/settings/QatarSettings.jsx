@@ -58,14 +58,14 @@ export default function QatarSettings() {
     setSettings(p => ({ ...p, legalisation: brackets }));
   }
 
-  if (loading) return <Shell><div className="p-10 text-zinc-400">Loading…</div></Shell>;
+  if (loading) return <Shell><div className="p-10 text-slate-400">Loading…</div></Shell>;
 
   return (
     <Shell>
       <div className="flex-1 p-8 max-w-4xl">
 
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-fuchsia-500">Qatar Settings</h1>
+          <h1 className="text-2xl font-bold text-white">Qatar Settings</h1>
           <button onClick={save} disabled={saving}
             className="bg-fuchsia-700 hover:bg-fuchsia-800 px-6 py-3 rounded-xl font-bold">
             {saving ? "Saving…" : saved ? "✓ Saved!" : "Save Settings"}
@@ -82,26 +82,26 @@ export default function QatarSettings() {
             <Num label="Duty tax paid fee (GBP)"       value={settings.dutyTaxPaidFee}         onChange={v => setTop("dutyTaxPaidFee", v)} />
             <Num label="Legalisation above-max rate (%)" value={settings.legalisationAboveRate} onChange={v => setTop("legalisationAboveRate", v)} step="0.01" />
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">QAR per GBP exchange rate</label>
+              <label className="block text-xs text-slate-400 mb-1">QAR per GBP exchange rate</label>
               <input type="number" step="0.000001" value={settings.xRate ?? ""}
                 onChange={e => setXRate(e.target.value)}
-                className="w-full p-3 rounded-xl bg-zinc-800 text-sm" />
-              <div className="text-xs text-zinc-500 mt-1">Used to convert invoice value to QAR for legalisation bracket lookup</div>
+                className="w-full p-3 rounded-xl bg-slate-800 text-sm" />
+              <div className="text-xs text-slate-500 mt-1">Used to convert invoice value to QAR for legalisation bracket lookup</div>
             </div>
           </div>
         </Section>
 
         {/* Legalisation brackets */}
         <Section title="Legalisation Fee Brackets (QAR value)">
-          <p className="text-zinc-400 text-sm mb-4">
+          <p className="text-slate-400 text-sm mb-4">
             The invoice value is converted to QAR using the exchange rate above, then matched to the bracket below to determine the legalisation fee (in QAR).
           </p>
           <div className="space-y-2">
-            <div className="grid grid-cols-6 gap-2 text-xs text-zinc-500 uppercase tracking-wider px-2">
+            <div className="grid grid-cols-6 gap-2 text-xs text-slate-500 uppercase tracking-wider px-2">
               <span>Bracket</span><span>From (QAR)</span><span>To (QAR)</span><span>Attestation</span><span>Invoices</span><span>Total fee</span>
             </div>
             {settings.legalisation.map((b, i) => (
-              <div key={i} className="grid grid-cols-6 gap-2 items-center bg-zinc-800 rounded-xl p-3">
+              <div key={i} className="grid grid-cols-6 gap-2 items-center bg-slate-800 rounded-xl p-3">
                 <span className="font-bold text-fuchsia-400">{b.bracket}</span>
                 <Num label="" value={b.from}        onChange={v => setLegal(i, "from", v)} />
                 <Num label="" value={b.to}          onChange={v => setLegal(i, "to", v)} />
@@ -110,7 +110,7 @@ export default function QatarSettings() {
                 <Num label="" value={b.total}       onChange={v => setLegal(i, "total", v)} />
               </div>
             ))}
-            <div className="bg-zinc-800 rounded-xl p-3 text-sm text-zinc-300">
+            <div className="bg-slate-800 rounded-xl p-3 text-sm text-slate-300">
               <strong>Bracket E</strong> (above QAR 1,000,000): <strong>{settings.legalisationAboveRate}%</strong> of QAR invoice value
             </div>
           </div>
@@ -122,17 +122,17 @@ export default function QatarSettings() {
             <div className="bg-green-900/30 border border-green-700 rounded-xl p-4 text-center">
               <div className="text-2xl mb-1">📦</div>
               <div className="font-bold text-green-400">Courier</div>
-              <div className="text-xs text-zinc-400 mt-1">Available — DDP terms</div>
+              <div className="text-xs text-slate-400 mt-1">Available — DDP terms</div>
             </div>
             <div className="bg-red-900/30 border border-red-700 rounded-xl p-4 text-center">
               <div className="text-2xl mb-1">✈️</div>
               <div className="font-bold text-red-400">Air</div>
-              <div className="text-xs text-zinc-400 mt-1">Not offered</div>
+              <div className="text-xs text-slate-400 mt-1">Not offered</div>
             </div>
             <div className="bg-red-900/30 border border-red-700 rounded-xl p-4 text-center">
               <div className="text-2xl mb-1">🚢</div>
               <div className="font-bold text-red-400">Sea</div>
-              <div className="text-xs text-zinc-400 mt-1">Not offered</div>
+              <div className="text-xs text-slate-400 mt-1">Not offered</div>
             </div>
           </div>
         </Section>
@@ -140,7 +140,7 @@ export default function QatarSettings() {
         {/* Notes */}
         <Section title="Destination Notes">
           <textarea rows={4} value={settings.notes} onChange={e => setNotes(e.target.value)}
-            className="w-full p-3 rounded-xl bg-zinc-800 text-sm" />
+            className="w-full p-3 rounded-xl bg-slate-800 text-sm" />
         </Section>
 
         <button onClick={save} disabled={saving}
@@ -153,12 +153,12 @@ export default function QatarSettings() {
 }
 
 function Shell({ children }) {
-  return <div className="flex bg-zinc-950 text-white min-h-screen"><Sidebar />{children}</div>;
+  return <div className="flex bg-slate-950 text-white min-h-screen"><Sidebar />{children}</div>;
 }
 function Section({ title, children }) {
   return (
-    <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
-      <h2 className="text-lg font-bold text-zinc-200 mb-4 border-b border-zinc-800 pb-2">{title}</h2>
+    <div className="bg-slate-900 rounded-xl p-6 mb-6">
+      <h2 className="text-lg font-bold text-slate-200 mb-4 border-b border-slate-800 pb-2">{title}</h2>
       {children}
     </div>
   );
@@ -166,10 +166,10 @@ function Section({ title, children }) {
 function Num({ label, value, onChange, step = "0.01" }) {
   return (
     <div>
-      {label && <label className="block text-xs text-zinc-400 mb-1">{label}</label>}
+      {label && <label className="block text-xs text-slate-400 mb-1">{label}</label>}
       <input type="number" step={step} value={value ?? ""}
         onChange={e => onChange(e.target.value)}
-        className="w-full p-3 rounded-xl bg-zinc-800 text-sm" />
+        className="w-full p-3 rounded-xl bg-slate-800 text-sm" />
     </div>
   );
 }

@@ -1,225 +1,212 @@
 import { useEffect, useState } from "react";
-import {
-  doc,
-  getDoc,
-  updateDoc
-} from "firebase/firestore";
-
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import Sidebar from "../../components/Sidebar";
 
-export default function SouthAfricaSettings() {
+const DEFAULTS = {
+  courier: {
+    handoverAirlineHandling: 850,
+    communication:           180,
+    importCustomsClearance:  480,
+  },
+  air: {
+    handoverAirlineHandling: 2250,
+    splitFee:                55,
+    airlineHandlingPerKg:    1.8,
+    communication:           90,
+    documentation:           500,
+  },
+  sea: {
+    provisionAgentCartage:   12000,
+    agencyOnVDP:             985,
+    documentation:           275,
+    communication:           82,
+    facilityFee:             500,
+  },
+  cartageBase:    6,
+  fuelSurcharge:  0.5977,   // 59.77%
+  agencyFee:      0.0375,   // 3.75% of invoice value
+};
 
-  const [settings, setSettings] = useState({
-    courierBase: {},
-    courierPerKg: {}
-  });
+const LABELS = {
+  courier: {
+    handoverAirlineHandling: "Handover / Airline handling (ZAR)",
+    communication:           "Communication (ZAR)",
+    importCustomsClearance:  "Import customs clearance (ZAR)",
+  },
+  air: {
+    handoverAirlineHandling: "Handover / Airline handling (ZAR)",
+    splitFee:                "Split fee (ZAR)",
+    airlineHandlingPerKg:    "Airline handling per kg (ZAR/kg)",
+    communication:           "Communication (ZAR)",
+    documentation:           "Documentation (ZAR)",
+  },
+  sea: {
+    provisionAgentCartage:   "Provision for agent / cartage surcharges (ZAR)",
+    agencyOnVDP:             "Agency on VDP (ZAR)",
+    documentation:           "Documentation (ZAR)",
+    communication:           "Communication (ZAR)",
+    facilityFee:             "Facility fee (ZAR)",
+  },
+};
 
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  async function loadSettings() {
-
-    try {
-
-      const snap = await getDoc(
-        doc(db, "settings", "southAfrica")
-      );
-
-      if (snap.exists()) {
-
-        console.log("SA SETTINGS:", snap.data());
-
-        setSettings({
-          courierBase: snap.data().courierBase || {},
-          courierPerKg: snap.data().courierPerKg || {}
-        });
-      }
-
-    } catch (err) {
-
-      console.error(err);
-      alert("Failed to load South Africa settings");
-
-    } finally {
-
-      setLoading(false);
-
+function deepMerge(target, source) {
+  const out = { ...target };
+  for (const key of Object.keys(source || {})) {
+    if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
+      out[key] = deepMerge(target[key] || {}, source[key]);
+    } else {
+      out[key] = source[key];
     }
   }
+  return out;
+}
 
-  function updateBase(zone, value) {
+export default function SouthAfricaSettings() {
+  const [settings, setSettings] = useState(DEFAULTS);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
 
-    setSettings(prev => ({
-      ...prev,
-      courierBase: {
-        ...prev.courierBase,
-        [zone]: Number(value)
-      }
-    }));
-  }
+  useEffect(() => { load(); }, []);
 
-  function updatePerKg(zone, value) {
-
-    setSettings(prev => ({
-      ...prev,
-      courierPerKg: {
-        ...prev.courierPerKg,
-        [zone]: Number(value)
-      }
-    }));
+  async function load() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "southAfrica"));
+      if (snap.exists()) setSettings(deepMerge(DEFAULTS, snap.data()));
+    } catch (e) { console.error(e); }
+    setLoading(false);
   }
 
   async function save() {
-
+    setSaving(true);
     try {
-
-      await updateDoc(
-        doc(db, "settings", "southAfrica"),
-        settings
-      );
-
-      alert("South Africa settings updated");
-
-    } catch (err) {
-
-      console.error(err);
-      alert("Save failed");
-
-    }
+      await setDoc(doc(db, "settings", "southAfrica"), settings);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) { alert("Failed to save"); }
+    setSaving(false);
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
-        Loading...
-      </div>
-    );
+  function setSection(section, key, val) {
+    setSettings(p => ({ ...p, [section]: { ...p[section], [key]: Number(val) } }));
   }
+  function setTop(key, val) {
+    setSettings(p => ({ ...p, [key]: Number(val) }));
+  }
+
+  if (loading) return (
+    <div className="flex bg-slate-950 text-white min-h-screen">
+      <Sidebar /><div className="p-10 text-slate-400">Loading…</div>
+    </div>
+  );
+
+  const cartageTotal = (settings.cartageBase || 0) * (1 + (settings.fuelSurcharge || 0));
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex">
-
+    <div className="flex bg-slate-950 text-white min-h-screen">
       <Sidebar />
+      <div className="flex-1 p-8 max-w-4xl">
 
-      <div className="flex-1 p-8">
-
-        <h1 className="text-4xl font-bold text-fuchsia-500 mb-8">
-          South Africa Settings
-        </h1>
-
-        {/* BASE CHARGES */}
-
-        <div className="bg-zinc-900 rounded-2xl p-6 mb-8">
-
-          <h2 className="text-2xl font-bold mb-6">
-            Zone Base Charges
-          </h2>
-
-          <div className="space-y-4">
-
-            {Object.keys(settings.courierBase || {}).length === 0 && (
-              <div className="text-zinc-500">
-                No base charges found
-              </div>
-            )}
-
-            {Object.keys(settings.courierBase || {}).map(zone => (
-
-              <div
-                key={zone}
-                className="flex items-center justify-between gap-4"
-              >
-
-                <div className="w-24 font-bold">
-                  Zone {zone}
-                </div>
-
-                <input
-                  type="number"
-                  value={settings.courierBase[zone]}
-                  onChange={e =>
-                    updateBase(zone, e.target.value)
-                  }
-                  className="
-                    flex-1
-                    bg-zinc-800
-                    rounded-xl
-                    p-3
-                  "
-                />
-
-              </div>
-            ))}
-
-          </div>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-white">South Africa Settings</h1>
+          <button onClick={save} disabled={saving}
+            className="px-6 py-2.5 bg-[#C4006A] hover:bg-[#a3005a] rounded-lg font-semibold text-sm">
+            {saving ? "Saving…" : saved ? "✓ Saved!" : "Save Settings"}
+          </button>
         </div>
+        <p className="text-slate-400 text-sm mb-6">
+          All values in ZAR. Defaults from Excel C&D Calculator V1.06.
+        </p>
 
-        {/* PER KG */}
-
-        <div className="bg-zinc-900 rounded-2xl p-6 mb-8">
-
-          <h2 className="text-2xl font-bold mb-6">
-            Zone Per KG Rates
-          </h2>
-
-          <div className="space-y-4">
-
-            {Object.keys(settings.courierPerKg || {}).length === 0 && (
-              <div className="text-zinc-500">
-                No KG rates found
+        {/* Cartage */}
+        <Section title="Cartage (applies to all modes)">
+          <div className="grid md:grid-cols-3 gap-4">
+            <Num label="Cartage base (ZAR)" value={settings.cartageBase}
+              onChange={v => setTop("cartageBase", v)} />
+            <Num label="Fuel surcharge rate" value={settings.fuelSurcharge} step="0.0001"
+              onChange={v => setTop("fuelSurcharge", v)} />
+            <div>
+              <label className="block text-xs text-slate-400 mb-1.5">Total cartage (auto)</label>
+              <div className="px-3 py-2.5 bg-slate-700 rounded-lg text-sm font-mono text-green-300">
+                ZAR {cartageTotal.toFixed(4)}
               </div>
-            )}
-
-            {Object.keys(settings.courierPerKg || {}).map(zone => (
-
-              <div
-                key={zone}
-                className="flex items-center justify-between gap-4"
-              >
-
-                <div className="w-24 font-bold">
-                  Zone {zone}
-                </div>
-
-                <input
-                  type="number"
-                  value={settings.courierPerKg[zone]}
-                  onChange={e =>
-                    updatePerKg(zone, e.target.value)
-                  }
-                  className="
-                    flex-1
-                    bg-zinc-800
-                    rounded-xl
-                    p-3
-                  "
-                />
-
-              </div>
-            ))}
-
+              <div className="text-xs text-slate-500 mt-1">= base × (1 + fuel rate)</div>
+            </div>
           </div>
-        </div>
+        </Section>
 
-        <button
-          onClick={save}
-          className="
-            bg-fuchsia-700
-            hover:bg-fuchsia-600
-            px-6
-            py-3
-            rounded-xl
-            font-bold
-          "
-        >
-          Save Settings
+        {/* Agency */}
+        <Section title="Agency Fee">
+          <div className="grid md:grid-cols-2 gap-4">
+            <Num label="Agency rate (% of invoice value)" value={settings.agencyFee} step="0.0001"
+              onChange={v => setTop("agencyFee", v)} />
+            <div className="flex items-end pb-1">
+              <div className="text-xs text-slate-400">
+                Applied to all modes as: invoice value × {((settings.agencyFee || 0) * 100).toFixed(2)}%
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        {/* Courier */}
+        <Section title="Courier Charges (ZAR)">
+          <div className="grid md:grid-cols-3 gap-4">
+            {Object.entries(LABELS.courier).map(([k, label]) => (
+              <Num key={k} label={label}
+                value={settings.courier?.[k] ?? DEFAULTS.courier[k]}
+                onChange={v => setSection("courier", k, v)} />
+            ))}
+          </div>
+        </Section>
+
+        {/* Air */}
+        <Section title="Air Freight Charges (ZAR)">
+          <div className="grid md:grid-cols-3 gap-4">
+            {Object.entries(LABELS.air).map(([k, label]) => (
+              <Num key={k} label={label}
+                value={settings.air?.[k] ?? DEFAULTS.air[k]}
+                onChange={v => setSection("air", k, v)} />
+            ))}
+          </div>
+        </Section>
+
+        {/* Sea */}
+        <Section title="Sea Freight Charges (ZAR)">
+          <div className="grid md:grid-cols-3 gap-4">
+            {Object.entries(LABELS.sea).map(([k, label]) => (
+              <Num key={k} label={label}
+                value={settings.sea?.[k] ?? DEFAULTS.sea[k]}
+                onChange={v => setSection("sea", k, v)} />
+            ))}
+          </div>
+        </Section>
+
+        <button onClick={save} disabled={saving}
+          className="px-8 py-3 bg-[#C4006A] hover:bg-[#a3005a] rounded-lg font-semibold">
+          {saving ? "Saving…" : saved ? "✓ Saved!" : "Save All Settings"}
         </button>
-
       </div>
+    </div>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-5">
+      <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-4 border-b border-slate-800 pb-2">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function Num({ label, value, onChange, step = "0.01" }) {
+  return (
+    <div>
+      <label className="block text-xs text-slate-400 mb-1.5">{label}</label>
+      <input type="number" step={step} value={value ?? ""}
+        onChange={e => onChange(e.target.value)}
+        className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm" />
     </div>
   );
 }

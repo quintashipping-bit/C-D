@@ -105,12 +105,12 @@ export default function Customers() {
   );
 
   return (
-    <div className="flex bg-zinc-950 text-white min-h-screen">
+    <div className="flex bg-slate-950 text-white min-h-screen">
       <Sidebar />
       <div className="flex-1 p-8">
 
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-fuchsia-500">Customers</h1>
+          <h1 className="text-2xl font-bold text-white">Customers</h1>
           <button
             onClick={() => { resetForm(); setShowForm(true); }}
             className="bg-fuchsia-700 hover:bg-fuchsia-800 px-4 py-2 rounded-xl font-bold"
@@ -120,7 +120,7 @@ export default function Customers() {
         </div>
 
         <input
-          className="w-full p-3 mb-6 rounded-xl bg-zinc-800"
+          className="w-full p-3 mb-6 rounded-xl bg-slate-800"
           placeholder="Search by name or country…"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -128,14 +128,14 @@ export default function Customers() {
 
         {/* Form */}
         {showForm && (
-          <div className="bg-zinc-900 rounded-2xl p-6 mb-6 border border-fuchsia-800">
+          <div className="bg-slate-900 rounded-xl p-6 mb-6 border border-fuchsia-800">
             <h2 className="text-xl font-bold mb-4">{editId ? "Edit" : "Add"} Customer</h2>
             <div className="grid md:grid-cols-3 gap-4 mb-4">
               <Field label="Name *" value={form.name} onChange={v => setForm(p => ({...p, name: v}))} />
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">Country</label>
+                <label className="block text-sm text-slate-400 mb-1">Country</label>
                 <select
-                  className="w-full p-3 rounded-xl bg-zinc-800"
+                  className="w-full p-3 rounded-xl bg-slate-800"
                   value={form.country}
                   onChange={e => setForm(p => ({...p, country: e.target.value}))}
                 >
@@ -157,7 +157,7 @@ export default function Customers() {
               <button onClick={save} disabled={saving} className="bg-fuchsia-700 hover:bg-fuchsia-800 px-6 py-2 rounded-xl font-bold">
                 {saving ? "Saving…" : "Save"}
               </button>
-              <button onClick={resetForm} className="bg-zinc-700 hover:bg-zinc-600 px-6 py-2 rounded-xl">
+              <button onClick={resetForm} className="bg-slate-700 hover:bg-zinc-600 px-6 py-2 rounded-xl">
                 Cancel
               </button>
             </div>
@@ -167,26 +167,26 @@ export default function Customers() {
         {/* Table */}
         <div className="space-y-3">
           {filtered.map(c => (
-            <div key={c.id} className="bg-zinc-900 rounded-2xl p-5 border border-zinc-800">
+            <div key={c.id} className="bg-slate-900 rounded-xl p-5 border border-slate-800">
               <div className="grid md:grid-cols-5 gap-4 items-center">
                 <div>
                   <div className="font-bold text-lg">{c.name}</div>
-                  <div className="text-zinc-400 text-sm">{c.country}</div>
+                  <div className="text-slate-400 text-sm">{c.country}</div>
                 </div>
                 <div>
-                  <div className="text-zinc-400 text-xs">Contact</div>
+                  <div className="text-slate-400 text-xs">Contact</div>
                   <div>{c.contact || "—"}</div>
                 </div>
                 <div>
-                  <div className="text-zinc-400 text-xs">Email</div>
+                  <div className="text-slate-400 text-xs">Email</div>
                   <div className="text-sm">{c.email || "—"}</div>
                 </div>
                 <div>
-                  <div className="text-zinc-400 text-xs">Zone / Rate/kg</div>
+                  <div className="text-slate-400 text-xs">Zone / Rate/kg</div>
                   <div>{c.zone || 0} / {c.rateKg || 0}</div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => startEdit(c)} className="bg-zinc-700 hover:bg-zinc-600 px-3 py-1 rounded-lg text-sm">
+                  <button onClick={() => startEdit(c)} className="bg-slate-700 hover:bg-zinc-600 px-3 py-1 rounded-lg text-sm">
                     Edit
                   </button>
                   <button onClick={() => remove(c.id)} className="bg-red-800 hover:bg-red-700 px-3 py-1 rounded-lg text-sm">
@@ -194,11 +194,11 @@ export default function Customers() {
                   </button>
                 </div>
               </div>
-              {c.notes && <div className="mt-2 text-sm text-zinc-400 border-t border-zinc-800 pt-2">{c.notes}</div>}
+              {c.notes && <div className="mt-2 text-sm text-slate-400 border-t border-slate-800 pt-2">{c.notes}</div>}
             </div>
           ))}
           {filtered.length === 0 && (
-            <div className="text-zinc-400 text-center py-12">No customers found. Add one above.</div>
+            <div className="text-slate-400 text-center py-12">No customers found. Add one above.</div>
           )}
         </div>
 
@@ -210,12 +210,12 @@ export default function Customers() {
 function Field({ label, value, onChange, type = "text" }) {
   return (
     <div>
-      <label className="block text-sm text-zinc-400 mb-1">{label}</label>
+      <label className="block text-sm text-slate-400 mb-1">{label}</label>
       <input
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full p-3 rounded-xl bg-zinc-800"
+        className="w-full p-3 rounded-xl bg-slate-800"
       />
     </div>
   );

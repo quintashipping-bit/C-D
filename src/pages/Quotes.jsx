@@ -303,10 +303,10 @@ export default function Quotes() {
             {/* Customer */}
             <div>
               <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Customer</label>
-              <select className="w-full" value={form.customerId} onChange={e => selectCustomer(e.target.value)}>
-                <option value="">— Select customer —</option>
+              <select className="w-full bg-slate-800 text-slate-100" value={form.customerId} onChange={e => selectCustomer(e.target.value)}>
+                <option value="" className="bg-slate-800 text-slate-400">— Select customer —</option>
                 {customers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.country})</option>
+                  <option key={c.id} value={c.id} className="bg-slate-800 text-white">{c.name} ({c.country})</option>
                 ))}
               </select>
             </div>
@@ -372,7 +372,7 @@ export default function Quotes() {
 
             <div>
               <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Transport mode</label>
-              <select className="w-full" value={form.transport} onChange={e => update("transport", e.target.value)}>
+              <select className="w-full bg-slate-800 text-slate-100" value={form.transport} onChange={e => update("transport", e.target.value)}>
                 <option>Courier</option>
                 <option>Air</option>
                 <option>Sea</option>
