@@ -124,14 +124,18 @@ export default function Quotes() {
     let quote = null;
 
     if (country === "AUSTRALIA") {
-      const zoneNum = Number(selectedCustomer.zone) || 0;
+      // zoneCode is the text code e.g. "VV1" — stored on customer record
+      // Fall back to zone field in case it's a code stored there
+      const zoneCode = selectedCustomer.zoneCode
+        || (isNaN(selectedCustomer.zone) ? selectedCustomer.zone : "")
+        || "";
       quote = calculateAustralia({
         value:      valueInIC,   // AUD
         valueGBP,
         weight, cbm,
         transport:  form.transport,
-        zone:       selectedCustomer.zoneCode || String(zoneNum),
-        zoneNumber: zoneNum,
+        zone:       zoneCode,
+        zoneNumber: null,
         settings:   countrySettings.australia || {},
       });
 
