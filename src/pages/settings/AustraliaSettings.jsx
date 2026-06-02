@@ -2,46 +2,22 @@ import { useEffect, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import Sidebar from "../../components/Sidebar";
+import { DEFAULT_T76, DEFAULT_S76 } from "../../logic/australia";
 
-const ZONES = ["TA1","NN1","QQ1","SS1","WW1","VV1","QQ2","QQ3","QQ4","VV2","WW2"];
+const ZONE_CODES = ["TA1","NN1","QQ1","SS1","WW1","VV1","QQ2","QQ3","QQ4","WW2"];
 const ZONE_CITIES = {
-  TA1:"Tasmania", NN1:"Sydney", QQ1:"Brisbane", SS1:"Adelaide",
-  WW1:"Perth", VV1:"Melbourne", QQ2:"Brisbane 2", QQ3:"Brisbane 3",
-  QQ4:"Brisbane 4", VV2:"Melbourne 2", WW2:"Perth 2 (→WW1)"
+  TA1:"Tasmania", NN1:"Sydney", QQ1:"Brisbane", SS1:"Adelaide", WW1:"Perth",
+  VV1:"Melbourne", QQ2:"Brisbane 2", QQ3:"Brisbane 3", QQ4:"Brisbane 4", WW2:"Perth 2",
 };
 
 const DEFAULTS = {
-  fuelSurcharge: 0.406,
-  t76: {
-    TA1: { base: 17.91, perKg: 0.4158 },
-    NN1: { base: 19.64, perKg: 0.5458 },
-    QQ1: { base: 25.41, perKg: 0.7277 },
-    SS1: { base: 31.19, perKg: 0.8577 },
-    WW1: { base: 36.97, perKg: 1.1955 },
-    VV1: { base: 42.74, perKg: 1.4814 },
-    QQ2: { base: 48.52, perKg: 2.1312 },
-    QQ3: { base: 60.07, perKg: 2.8069 },
-    QQ4: { base: 65.85, perKg: 4.1584 },
-    VV2: { base: 77.40, perKg: 4.6782 },
-    WW2: { base: 36.97, perKg: 1.1955 },
-  },
-  s76: {
-    TA1: { base: 15.00,  perKg: 0.8997  },
-    NN1: { base: 20.99,  perKg: 2.9990  },
-    QQ1: { base: 26.99,  perKg: 5.9980  },
-    SS1: { base: 35.99,  perKg: 7.1976  },
-    WW1: { base: 41.99,  perKg: 10.7964 },
-    VV1: { base: 47.98,  perKg: 13.1956 },
-    QQ2: { base: 74.98,  perKg: 16.1946 },
-    QQ3: { base: 83.97,  perKg: 17.3942 },
-    QQ4: { base: 119.96, perKg: 25.1916 },
-    VV2: { base: 149.95, perKg: 28.1906 },
-    WW2: { base: 41.99,  perKg: 10.7964 },
-  },
+  dutyRate:        0.05,
+  fuelSurcharge:   0.406,
   courier: {
-    abfChargeOver1000:  190,
-    disbursementFixed:  20,
-    disbursementPctGBP: 0.03,
+    abfChargeOver1000:    190,
+    govtCharge:           190,
+    disbursementFixed:    20,
+    disbursementRate:     0.03,
   },
   air: {
     electronicProcessingOver10k:      201,
@@ -60,56 +36,28 @@ const DEFAULTS = {
     destinationHandling:              85,
   },
   sea: {
-    destinationPortCharges:      95,
-    destinationTerminalHandling: 20,
-    deliveryOrderFee:            50,
-    destinationQuarantineFee:    45,
-    cmrFee:                      25,
-    customsClearance:            125,
-    electronicEntryProcessing:   201,
-    quarantineProcessingFee:     49,
-    declarationProcessingFee:    152,
-    perCbmRate:                  20,
+    destinationPortCharges:       95,
+    destinationTerminalHandling:  20,
+    deliveryOrderFee:             50,
+    destinationQuarantineFee:     45,
+    cmrFee:                       25,
+    customsClearance:             125,
+    electronicEntryProcessing:    201,
+    quarantineFee:                49,
+    declarationFee:               152,
+    perCbmRate:                   20,
   },
-};
-
-const AIR_LABELS = {
-  electronicProcessingOver10k:      "Electronic processing > AUD 10k",
-  electronicProcessingUnder10k:     "Electronic processing < AUD 10k",
-  quarantineProcessing:             "Quarantine processing",
-  declarationOver10k:               "Declaration > AUD 10k",
-  declarationUnder10k:              "Declaration < AUD 10k",
-  destinationAirlineDocFee:         "Airline document fee",
-  customsClearanceFee:              "Customs clearance fee",
-  chainOfResponsibility:            "Chain of responsibility",
-  cmrFee:                           "CMR fee",
-  destinationCargoTerminalOpsPerKg: "Cargo terminal ops (AUD/kg)",
-  destinationIntlTerminalMin:       "International terminal minimum (AUD)",
-  destinationIntlTerminalPerKg:     "International terminal (AUD/kg)",
-  destinationQuarantineProcessing:  "Destination quarantine processing",
-  destinationHandling:              "Destination handling",
-};
-
-const SEA_LABELS = {
-  destinationPortCharges:      "Destination port charges",
-  destinationTerminalHandling: "Terminal handling",
-  deliveryOrderFee:            "Delivery order fee",
-  destinationQuarantineFee:    "Destination quarantine fee",
-  cmrFee:                      "CMR fee",
-  customsClearance:            "Customs clearance",
-  electronicEntryProcessing:   "Electronic entry processing",
-  quarantineProcessingFee:     "Quarantine processing fee",
-  declarationProcessingFee:    "Declaration processing fee",
-  perCbmRate:                  "Per CBM rate",
+  t76Zones: { ...DEFAULT_T76 },
+  s76Zones: { ...DEFAULT_S76 },
 };
 
 function deepMerge(target, source) {
   const out = { ...target };
-  for (const key of Object.keys(source || {})) {
-    if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
-      out[key] = deepMerge(target[key] || {}, source[key]);
+  for (const k of Object.keys(source || {})) {
+    if (source[k] && typeof source[k] === "object" && !Array.isArray(source[k])) {
+      out[k] = deepMerge(target[k] || {}, source[k]);
     } else {
-      out[key] = source[key];
+      out[k] = source[k];
     }
   }
   return out;
@@ -120,7 +68,6 @@ export default function AustraliaSettings() {
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
-  const [previewWeight, setPreviewWeight] = useState(161);
 
   useEffect(() => { load(); }, []);
 
@@ -136,35 +83,20 @@ export default function AustraliaSettings() {
     setSaving(true);
     try {
       await setDoc(doc(db, "settings", "australia"), settings);
-      setSaved(true); setTimeout(() => setSaved(false), 3000);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
     } catch (e) { alert("Failed to save"); }
     setSaving(false);
   }
 
-  function setZone(service, zone, field, val) {
-    setSettings(p => ({
-      ...p,
-      [service]: { ...p[service], [zone]: { ...p[service][zone], [field]: Number(val) } }
-    }));
-  }
   function setNested(section, key, val) {
     setSettings(p => ({ ...p, [section]: { ...p[section], [key]: Number(val) } }));
   }
-  function setTop(key, val) {
-    setSettings(p => ({ ...p, [key]: Number(val) }));
-  }
-
-  // Preview calculation for a zone
-  function preview(zone, weight) {
-    const fuel = settings.fuelSurcharge ?? 0.406;
-    const t = settings.t76?.[zone];
-    const s = settings.s76?.[zone];
-    if (!t || !s) return null;
-    const tF = t.base + Math.max(0, weight - 20) * t.perKg;
-    const sF = s.base + Math.max(0, weight - 5)  * s.perKg;
-    const tT = tF * (1 + fuel);
-    const sT = sF * (1 + fuel);
-    return { t76: tT, s76: sT, winner: tT <= sT ? "T76" : "S76" };
+  function setZone(table, zone, field, val) {
+    setSettings(p => ({
+      ...p,
+      [table]: { ...p[table], [zone]: { ...p[table][zone], [field]: Number(val) } }
+    }));
   }
 
   if (loading) return (
@@ -173,124 +105,102 @@ export default function AustraliaSettings() {
     </div>
   );
 
+  const fuel = settings.fuelSurcharge ?? 0.406;
+
   return (
     <div className="flex bg-slate-950 text-white min-h-screen">
       <Sidebar />
-      <div className="flex-1 p-8 max-w-6xl overflow-x-auto">
+      <div className="flex-1 p-8 max-w-6xl overflow-auto">
 
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Australia Settings</h1>
-            <p className="text-slate-400 text-sm mt-1">All values in AUD. Defaults from Excel C&D Calculator V1.06.</p>
-          </div>
+          <h1 className="text-2xl font-bold text-white">Australia Settings</h1>
           <button onClick={save} disabled={saving}
             className="px-6 py-2.5 bg-[#C4006A] hover:bg-[#a3005a] rounded-lg font-semibold text-sm">
-            {saving ? "Saving…" : saved ? "✓ Saved!" : "Save Settings"}
+            {saving ? "Saving…" : saved ? "✓ Saved!" : "Save All Settings"}
           </button>
         </div>
 
-        {/* ── Fuel surcharge ── */}
-        <Section title="Local Delivery — Fuel Surcharge">
-          <p className="text-slate-400 text-xs mb-3">
-            Applied to both T76 and S76 freight totals. Formula: freight × (1 + rate).
-          </p>
-          <div className="flex items-center gap-6">
-            <div className="w-48">
-              <label className="block text-xs text-slate-400 mb-1.5">Fuel surcharge rate</label>
-              <input type="number" step="0.001" value={settings.fuelSurcharge ?? 0.406}
-                onChange={e => setTop("fuelSurcharge", e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm" />
-            </div>
-            <div className="text-slate-400 text-sm pt-5">
-              = {((settings.fuelSurcharge ?? 0.406) * 100).toFixed(1)}% added to all local delivery charges
+        {/* ── General ── */}
+        <Section title="General Rates">
+          <div className="grid md:grid-cols-3 gap-4">
+            <Num label="Duty rate (%)" value={settings.dutyRate} step="0.001"
+              onChange={v => setSettings(p => ({...p, dutyRate: Number(v)}))} />
+            <Num label="Fuel surcharge (local delivery)" value={settings.fuelSurcharge} step="0.001"
+              onChange={v => setSettings(p => ({...p, fuelSurcharge: Number(v)}))} />
+            <div>
+              <label className="block text-xs text-slate-400 mb-1.5">Current fuel surcharge</label>
+              <div className="px-3 py-2.5 bg-slate-700 rounded-lg text-sm font-mono text-green-300">
+                {(fuel * 100).toFixed(1)}%
+              </div>
             </div>
           </div>
         </Section>
 
-        {/* ── Delivery zone tables side by side ── */}
-        <Section title="Local Delivery Zone Rates — T76 (20kg threshold) and S76 (5kg threshold)">
-          <div className="flex items-center gap-4 mb-4">
-            <p className="text-slate-400 text-xs flex-1">
-              The calculator tries both services for every shipment and uses whichever gives the <strong className="text-white">lower total cost</strong>.
-              T76 formula: base + max(0, weight−20) × perKg, then × (1 + fuel).
-              S76 formula: base + max(0, weight−5) × perKg, then × (1 + fuel).
-            </p>
-            <div className="flex items-center gap-2 shrink-0">
-              <label className="text-xs text-slate-400">Preview weight (kg):</label>
-              <input type="number" value={previewWeight}
-                onChange={e => setPreviewWeight(Number(e.target.value))}
-                className="w-20 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-sm text-center" />
-            </div>
-          </div>
+        {/* ── Local Delivery — T76 and S76 ── */}
+        <Section title="Local Delivery Rates — T76 and S76">
+          <p className="text-slate-400 text-xs mb-4">
+            The calculator computes the cost under both services and uses whichever is lower.
+            <strong className="text-slate-300"> T76</strong>: charged per kg after 20kg threshold.
+            <strong className="text-slate-300"> S76</strong>: charged per kg after 5kg threshold.
+            Fuel surcharge ({(fuel*100).toFixed(1)}%) is added to both.
+          </p>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="bg-slate-800">
-                  <th className="text-left px-3 py-2.5 text-xs text-slate-400 font-medium uppercase tracking-wide border border-slate-700">Zone</th>
-                  <th className="text-left px-3 py-2.5 text-xs text-slate-400 font-medium uppercase tracking-wide border border-slate-700">City</th>
-                  <th className="text-center px-3 py-2.5 text-xs text-[#C4006A] font-bold uppercase tracking-wide border border-slate-700" colSpan={2}>T76 (threshold 20kg)</th>
-                  <th className="text-center px-3 py-2.5 text-xs text-blue-400 font-bold uppercase tracking-wide border border-slate-700" colSpan={2}>S76 (threshold 5kg)</th>
-                  <th className="text-center px-3 py-2.5 text-xs text-slate-400 font-medium uppercase tracking-wide border border-slate-700" colSpan={3}>Preview at {previewWeight}kg</th>
+                <tr className="border-b border-slate-700">
+                  <th className="text-left px-3 py-2 text-xs text-slate-400 font-medium uppercase w-16">Zone</th>
+                  <th className="text-left px-3 py-2 text-xs text-slate-400 font-medium uppercase w-28">City</th>
+                  <th className="px-3 py-2 text-xs text-[#C4006A] font-bold uppercase text-center" colSpan={2}>T76</th>
+                  <th className="px-3 py-2 text-xs text-slate-500 font-bold uppercase text-center w-6"></th>
+                  <th className="px-3 py-2 text-xs text-blue-400 font-bold uppercase text-center" colSpan={2}>S76</th>
                 </tr>
-                <tr className="bg-slate-800/50">
-                  <th className="border border-slate-700 px-3 py-2"></th>
-                  <th className="border border-slate-700 px-3 py-2"></th>
-                  <th className="text-center px-3 py-2 text-xs text-slate-400 border border-slate-700">Base (AUD)</th>
-                  <th className="text-center px-3 py-2 text-xs text-slate-400 border border-slate-700">Per kg &gt;20kg</th>
-                  <th className="text-center px-3 py-2 text-xs text-slate-400 border border-slate-700">Base (AUD)</th>
-                  <th className="text-center px-3 py-2 text-xs text-slate-400 border border-slate-700">Per kg &gt;5kg</th>
-                  <th className="text-center px-3 py-2 text-xs text-[#C4006A] border border-slate-700">T76 total</th>
-                  <th className="text-center px-3 py-2 text-xs text-blue-400 border border-slate-700">S76 total</th>
-                  <th className="text-center px-3 py-2 text-xs text-green-400 border border-slate-700">Selected</th>
+                <tr className="border-b border-slate-800 bg-slate-800/30">
+                  <th className="px-3 py-1.5"></th>
+                  <th className="px-3 py-1.5"></th>
+                  <th className="px-3 py-1.5 text-xs text-slate-400 font-medium text-right">Base rate (AUD)</th>
+                  <th className="px-3 py-1.5 text-xs text-slate-400 font-medium text-right">Per kg after 20kg</th>
+                  <th className="px-3 py-1.5"></th>
+                  <th className="px-3 py-1.5 text-xs text-slate-400 font-medium text-right">Base rate (AUD)</th>
+                  <th className="px-3 py-1.5 text-xs text-slate-400 font-medium text-right">Per kg after 5kg</th>
                 </tr>
               </thead>
               <tbody>
-                {ZONES.map(zone => {
-                  const p = preview(zone, previewWeight);
+                {ZONE_CODES.map((code, i) => {
+                  const t = settings.t76Zones?.[code] || DEFAULT_T76[code];
+                  const s = settings.s76Zones?.[code] || DEFAULT_S76[code];
                   return (
-                    <tr key={zone} className="border-b border-slate-800 hover:bg-slate-800/30">
-                      <td className="px-3 py-2 border border-slate-700 font-mono font-bold text-[#f472b6]">{zone}</td>
-                      <td className="px-3 py-2 border border-slate-700 text-slate-400 text-xs">{ZONE_CITIES[zone]}</td>
+                    <tr key={code} className={`border-b border-slate-800/50 ${i % 2 === 0 ? "bg-slate-900" : "bg-slate-800/20"}`}>
+                      <td className="px-3 py-2">
+                        <span className="font-mono font-bold text-[#C4006A] text-xs">{code}</span>
+                      </td>
+                      <td className="px-3 py-2 text-slate-400 text-xs">{ZONE_CITIES[code]}</td>
                       {/* T76 */}
-                      <td className="px-2 py-1.5 border border-slate-700">
+                      <td className="px-3 py-2">
                         <input type="number" step="0.01"
-                          value={settings.t76?.[zone]?.base ?? ""}
-                          onChange={e => setZone("t76", zone, "base", e.target.value)}
-                          className="w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-center" />
+                          value={t?.base ?? ""}
+                          onChange={e => setZone("t76Zones", code, "base", e.target.value)}
+                          className="w-28 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-sm text-right" />
                       </td>
-                      <td className="px-2 py-1.5 border border-slate-700">
+                      <td className="px-3 py-2">
                         <input type="number" step="0.0001"
-                          value={settings.t76?.[zone]?.perKg ?? ""}
-                          onChange={e => setZone("t76", zone, "perKg", e.target.value)}
-                          className="w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-center" />
+                          value={t?.perKgAfter20 ?? ""}
+                          onChange={e => setZone("t76Zones", code, "perKgAfter20", e.target.value)}
+                          className="w-28 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-sm text-right" />
                       </td>
+                      <td className="px-3 py-2 text-slate-600 text-center">|</td>
                       {/* S76 */}
-                      <td className="px-2 py-1.5 border border-slate-700">
+                      <td className="px-3 py-2">
                         <input type="number" step="0.01"
-                          value={settings.s76?.[zone]?.base ?? ""}
-                          onChange={e => setZone("s76", zone, "base", e.target.value)}
-                          className="w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-center" />
+                          value={s?.base ?? ""}
+                          onChange={e => setZone("s76Zones", code, "base", e.target.value)}
+                          className="w-28 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-sm text-right" />
                       </td>
-                      <td className="px-2 py-1.5 border border-slate-700">
+                      <td className="px-3 py-2">
                         <input type="number" step="0.0001"
-                          value={settings.s76?.[zone]?.perKg ?? ""}
-                          onChange={e => setZone("s76", zone, "perKg", e.target.value)}
-                          className="w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-center" />
-                      </td>
-                      {/* Preview */}
-                      <td className="px-3 py-2 border border-slate-700 text-center font-mono text-xs text-[#f472b6]">
-                        {p ? `AUD ${p.t76.toFixed(2)}` : "—"}
-                      </td>
-                      <td className="px-3 py-2 border border-slate-700 text-center font-mono text-xs text-blue-300">
-                        {p ? `AUD ${p.s76.toFixed(2)}` : "—"}
-                      </td>
-                      <td className="px-3 py-2 border border-slate-700 text-center text-xs font-bold">
-                        {p ? (
-                          <span className={p.winner === "T76" ? "text-[#f472b6]" : "text-blue-300"}>
-                            {p.winner}
-                          </span>
-                        ) : "—"}
+                          value={s?.perKgAfter5 ?? ""}
+                          onChange={e => setZone("s76Zones", code, "perKgAfter5", e.target.value)}
+                          className="w-28 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-sm text-right" />
                       </td>
                     </tr>
                   );
@@ -298,41 +208,58 @@ export default function AustraliaSettings() {
               </tbody>
             </table>
           </div>
-          <p className="text-slate-500 text-xs mt-3">
-            Preview column shows totals including {((settings.fuelSurcharge ?? 0.406) * 100).toFixed(1)}% fuel surcharge.
-            "Selected" shows which service the calculator would choose at that weight.
-          </p>
+
+          <div className="mt-4 p-3 bg-slate-800 rounded-lg text-xs text-slate-400">
+            <strong className="text-slate-300">How the decision works:</strong> For a given zone and weight, the system calculates:
+            T76 = (base + (weight − 20) × perKgAfter20) × (1 + fuel%) and
+            S76 = (base + (weight − 5) × perKgAfter5) × (1 + fuel%).
+            The lower total is used. Both amounts are shown on the quote for transparency.
+          </div>
         </Section>
 
         {/* ── Courier ── */}
         <Section title="Courier Charges (AUD)">
-          <div className="grid md:grid-cols-3 gap-4">
-            <Num label="ABF charge (invoice > AUD 1,000)"    value={settings.courier?.abfChargeOver1000}  onChange={v => setNested("courier","abfChargeOver1000",v)} />
-            <Num label="Disbursement fixed fee (AUD)"         value={settings.courier?.disbursementFixed}  onChange={v => setNested("courier","disbursementFixed",v)} />
-            <Num label="Disbursement % of GBP invoice value"  value={settings.courier?.disbursementPctGBP} onChange={v => setNested("courier","disbursementPctGBP",v)} step="0.001" />
+          <div className="grid md:grid-cols-4 gap-4">
+            <Num label="ABF charge (invoice > AUD 1,000)"  value={settings.courier?.abfChargeOver1000}  onChange={v => setNested("courier","abfChargeOver1000",v)} />
+            <Num label="Australia Govt charge"              value={settings.courier?.govtCharge}         onChange={v => setNested("courier","govtCharge",v)} />
+            <Num label="Disbursement fixed (AUD)"           value={settings.courier?.disbursementFixed}  onChange={v => setNested("courier","disbursementFixed",v)} />
+            <Num label="Disbursement rate (% of GBP value)" value={settings.courier?.disbursementRate} step="0.001" onChange={v => setNested("courier","disbursementRate",v)} />
           </div>
         </Section>
 
         {/* ── Air ── */}
         <Section title="Air Freight Charges (AUD)">
-          <div className="grid md:grid-cols-3 gap-4 mb-4">
-            {Object.entries(AIR_LABELS).map(([k, label]) => (
-              <Num key={k} label={label}
-                value={settings.air?.[k] ?? DEFAULTS.air[k]}
-                onChange={v => setNested("air", k, v)}
-                step={k.includes("PerKg") || k.includes("Pct") ? "0.001" : "0.01"} />
-            ))}
+          <div className="grid md:grid-cols-3 gap-4">
+            <Num label="Electronic processing > AUD 10k"  value={settings.air?.electronicProcessingOver10k}  onChange={v => setNested("air","electronicProcessingOver10k",v)} />
+            <Num label="Electronic processing < AUD 10k"  value={settings.air?.electronicProcessingUnder10k} onChange={v => setNested("air","electronicProcessingUnder10k",v)} />
+            <Num label="Quarantine processing"             value={settings.air?.quarantineProcessing}         onChange={v => setNested("air","quarantineProcessing",v)} />
+            <Num label="Declaration > AUD 10k"             value={settings.air?.declarationOver10k}           onChange={v => setNested("air","declarationOver10k",v)} />
+            <Num label="Declaration < AUD 10k"             value={settings.air?.declarationUnder10k}          onChange={v => setNested("air","declarationUnder10k",v)} />
+            <Num label="Airline document fee"              value={settings.air?.destinationAirlineDocFee}     onChange={v => setNested("air","destinationAirlineDocFee",v)} />
+            <Num label="Customs clearance fee"             value={settings.air?.customsClearanceFee}          onChange={v => setNested("air","customsClearanceFee",v)} />
+            <Num label="Chain of responsibility"           value={settings.air?.chainOfResponsibility}        onChange={v => setNested("air","chainOfResponsibility",v)} />
+            <Num label="CMR fee"                           value={settings.air?.cmrFee}                       onChange={v => setNested("air","cmrFee",v)} />
+            <Num label="Destination quarantine"            value={settings.air?.destinationQuarantineProcessing} onChange={v => setNested("air","destinationQuarantineProcessing",v)} />
+            <Num label="Destination handling"              value={settings.air?.destinationHandling}          onChange={v => setNested("air","destinationHandling",v)} />
+            <Num label="Cargo terminal ops (per kg)"       value={settings.air?.destinationCargoTerminalOpsPerKg} step="0.001" onChange={v => setNested("air","destinationCargoTerminalOpsPerKg",v)} />
+            <Num label="Intl terminal minimum (AUD)"       value={settings.air?.destinationIntlTerminalMin}   onChange={v => setNested("air","destinationIntlTerminalMin",v)} />
+            <Num label="Intl terminal per kg"              value={settings.air?.destinationIntlTerminalPerKg} step="0.001" onChange={v => setNested("air","destinationIntlTerminalPerKg",v)} />
           </div>
         </Section>
 
         {/* ── Sea ── */}
         <Section title="Sea Freight Charges (AUD)">
           <div className="grid md:grid-cols-3 gap-4">
-            {Object.entries(SEA_LABELS).map(([k, label]) => (
-              <Num key={k} label={label}
-                value={settings.sea?.[k] ?? DEFAULTS.sea[k]}
-                onChange={v => setNested("sea", k, v)} />
-            ))}
+            <Num label="Destination port charges"      value={settings.sea?.destinationPortCharges}      onChange={v => setNested("sea","destinationPortCharges",v)} />
+            <Num label="Terminal handling"             value={settings.sea?.destinationTerminalHandling}  onChange={v => setNested("sea","destinationTerminalHandling",v)} />
+            <Num label="Delivery order fee"            value={settings.sea?.deliveryOrderFee}             onChange={v => setNested("sea","deliveryOrderFee",v)} />
+            <Num label="Destination quarantine fee"    value={settings.sea?.destinationQuarantineFee}     onChange={v => setNested("sea","destinationQuarantineFee",v)} />
+            <Num label="CMR fee"                       value={settings.sea?.cmrFee}                       onChange={v => setNested("sea","cmrFee",v)} />
+            <Num label="Customs clearance"             value={settings.sea?.customsClearance}             onChange={v => setNested("sea","customsClearance",v)} />
+            <Num label="Electronic entry processing"   value={settings.sea?.electronicEntryProcessing}    onChange={v => setNested("sea","electronicEntryProcessing",v)} />
+            <Num label="Quarantine fee"                value={settings.sea?.quarantineFee}                onChange={v => setNested("sea","quarantineFee",v)} />
+            <Num label="Declaration fee"               value={settings.sea?.declarationFee}               onChange={v => setNested("sea","declarationFee",v)} />
+            <Num label="Per CBM rate (AUD)"            value={settings.sea?.perCbmRate}                   onChange={v => setNested("sea","perCbmRate",v)} />
           </div>
         </Section>
 
@@ -340,6 +267,7 @@ export default function AustraliaSettings() {
           className="px-8 py-3 bg-[#C4006A] hover:bg-[#a3005a] rounded-lg font-semibold">
           {saving ? "Saving…" : saved ? "✓ Saved!" : "Save All Settings"}
         </button>
+
       </div>
     </div>
   );
@@ -348,7 +276,7 @@ export default function AustraliaSettings() {
 function Section({ title, children }) {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-5">
-      <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-4 border-b border-slate-800 pb-2">{title}</h2>
+      <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-4 border-b border-slate-700 pb-2">{title}</h2>
       {children}
     </div>
   );

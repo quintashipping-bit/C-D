@@ -1,225 +1,260 @@
 // src/logic/australia.js
 // Exact mirror of Excel "Australia" sheet — C&D Calculator V1.06.xlsm
 //
-// LOCAL DELIVERY:
-//   Two services — T76 (20kg threshold) and S76 (5kg threshold)
-//   Both include 40.6% fuel surcharge on the freight component
-//   Calculator picks whichever gives the LOWER total cost
+// LOCAL DELIVERY: Two competing services — calculator picks the lower cost.
 //
-// T76: base + max(0, weight-20) × perKg/20  → × 1.406
-// S76: base + max(0, weight-5)  × perKg/5   → × 1.406
+// T76 service: base + (weight - 20) × perKgAfter20, minimum = base, then × (1 + fuelSurcharge)
+// S76 service: base + (weight - 5)  × perKgAfter5,  minimum = base, then × (1 + fuelSurcharge)
+// Fuel surcharge (current): 40.6%
 //
-// Zone codes: TA1 NN1 QQ1 SS1 WW1 VV1 QQ2 QQ3 QQ4 VV2 (WW2 → uses WW1 rates)
+// Zone codes: TA1 NN1 QQ1 SS1 WW1 VV1 QQ2 QQ3 QQ4 WW2 (mapped to zones 1-10)
+//
+// VERIFIED: VV1 (zone 6), weight=161
+//   T76: (42.74 + 141×1.4814) × 1.406 = 251.617 × 1.406 = 353.774 ✓
+//   S76: (32.99 + 156×13.1956) × 1.406 = enormous → T76 wins ✓
 
-// ── Rate tables (from Excel rows 9-15) ──────────────────────────
-// All rates in AUD
-const T76 = {
-  TA1: { base: 17.91, perKg: 0.4158 },
-  NN1: { base: 19.64, perKg: 0.5458 },
-  QQ1: { base: 25.41, perKg: 0.7277 },
-  SS1: { base: 31.19, perKg: 0.8577 },
-  WW1: { base: 36.97, perKg: 1.1955 },
-  VV1: { base: 42.74, perKg: 1.4814 },
-  QQ2: { base: 48.52, perKg: 2.1312 },
-  QQ3: { base: 60.07, perKg: 2.8069 },
-  QQ4: { base: 65.85, perKg: 4.1584 },
-  VV2: { base: 77.40, perKg: 4.6782 },
-  WW2: { base: 36.97, perKg: 1.1955 }, // WW2 → WW1 rates per Excel
+// ── Default zone tables (from Excel rows 9-15) ─────────────────────────
+// These are the defaults — can be overridden per-zone in Firestore settings/australia
+export const DEFAULT_T76 = {
+  TA1: { base: 17.91, perKgAfter20: 0.4158  },
+  NN1: { base: 19.64, perKgAfter20: 0.5458  },
+  QQ1: { base: 25.41, perKgAfter20: 0.7277  },
+  SS1: { base: 31.19, perKgAfter20: 0.8577  },
+  WW1: { base: 36.97, perKgAfter20: 1.1955  },
+  VV1: { base: 42.74, perKgAfter20: 1.4814  },
+  QQ2: { base: 48.52, perKgAfter20: 2.1312  },
+  QQ3: { base: 60.07, perKgAfter20: 2.8069  },
+  QQ4: { base: 65.85, perKgAfter20: 4.1584  },
+  WW2: { base: 77.40, perKgAfter20: 4.6782  },
 };
 
-const S76 = {
-  TA1: { base: 15.00,  perKg: 0.8997  },
-  NN1: { base: 20.99,  perKg: 2.9990  },
-  QQ1: { base: 26.99,  perKg: 5.9980  },
-  SS1: { base: 35.99,  perKg: 7.1976  },
-  WW1: { base: 41.99,  perKg: 10.7964 },
-  VV1: { base: 47.98,  perKg: 13.1956 },
-  QQ2: { base: 74.98,  perKg: 16.1946 },
-  QQ3: { base: 83.97,  perKg: 17.3942 },
-  QQ4: { base: 119.96, perKg: 25.1916 },
-  VV2: { base: 149.95, perKg: 28.1906 },
-  WW2: { base: 41.99,  perKg: 10.7964 }, // WW2 → WW1 rates
+export const DEFAULT_S76 = {
+  TA1: { base: 12,     perKgAfter5: 0.8997  },
+  NN1: { base: 15,     perKgAfter5: 2.999   },
+  QQ1: { base: 23.99,  perKgAfter5: 5.998   },
+  SS1: { base: 26.99,  perKgAfter5: 7.1976  },
+  WW1: { base: 29.99,  perKgAfter5: 10.7964 },
+  VV1: { base: 32.99,  perKgAfter5: 13.1956 },
+  QQ2: { base: 53.98,  perKgAfter5: 16.1946 },
+  QQ3: { base: 56.98,  perKgAfter5: 17.3942 },
+  QQ4: { base: 74.98,  perKgAfter5: 25.1916 },
+  WW2: { base: 104.97, perKgAfter5: 28.1906 },
 };
 
-const FUEL = 0.406; // 40.6% fuel surcharge on freight
+// Zone number → code mapping (from Excel col header row 9)
+const ZONE_NUM_TO_CODE = {
+  1:"TA1", 2:"NN1", 3:"QQ1", 4:"SS1", 5:"WW1",
+  6:"VV1", 7:"QQ2", 8:"QQ3", 9:"QQ4", 10:"WW2",
+};
 
-function calcDelivery(zoneCode, weight, settings = {}) {
-  const zone = (zoneCode || "").toUpperCase().trim();
-  // Use Firestore settings if available, fallback to hardcoded tables
-  const t = (settings.t76 && settings.t76[zone]) ? settings.t76[zone] : T76[zone];
-  const s = (settings.s76 && settings.s76[zone]) ? settings.s76[zone] : S76[zone];
-  const fuel = settings.fuelSurcharge ?? FUEL;
-  if (!t && !s) return { delivery: 0, service: "none", note: `Unknown zone: ${zone}` };
-
-  const tFreight = t ? t.base + Math.max(0, weight - 20) * t.perKg : Infinity;
-  const tTotal   = tFreight * (1 + fuel);
-
-  const sFreight = s ? s.base + Math.max(0, weight - 5) * s.perKg : Infinity;
-  const sTotal   = sFreight * (1 + fuel);
-
-  if (tTotal <= sTotal) {
-    return {
-      delivery: tTotal, service: "T76",
-      baseFreight: tFreight, fuel: tFreight * fuel,
-      zoneCode: zone,
-    };
-  }
-  return {
-    delivery: sTotal, service: "S76",
-    baseFreight: sFreight, fuel: sFreight * FUEL,
-    zoneCode: zone,
-  };
+function resolveZoneCode(zone, zoneNumber) {
+  let code = String(zone || "").toUpperCase().trim();
+  if (!code && zoneNumber) code = ZONE_NUM_TO_CODE[Number(zoneNumber)] || "";
+  if (code && !isNaN(code)) code = ZONE_NUM_TO_CODE[Number(code)] || code;
+  return code;
 }
 
-// ── Main export ─────────────────────────────────────────────────
+function calcLocalDelivery(zoneCode, weight, t76Table, s76Table, fuelRate) {
+  if (!zoneCode) return { delivery: 0, service: "none", note: "No zone assigned to customer" };
+
+  const t = t76Table[zoneCode];
+  const s = s76Table[zoneCode];
+
+  if (!t && !s) return { delivery: 0, service: "none", note: `Unknown zone: ${zoneCode}` };
+
+  // T76: base + max(0, weight-20) × perKgAfter20, then × (1+fuel)
+  const t76Base  = t ? t.base + Math.max(0, weight - 20) * t.perKgAfter20 : Infinity;
+  const t76Total = t76Base * (1 + fuelRate);
+
+  // S76: base + max(0, weight-5) × perKgAfter5, then × (1+fuel)
+  const s76Base  = s ? s.base + Math.max(0, weight - 5) * s.perKgAfter5 : Infinity;
+  const s76Total = s76Base * (1 + fuelRate);
+
+  if (t76Total <= s76Total) {
+    return {
+      delivery:    t76Total,
+      service:     "T76",
+      baseFreight: t76Base,
+      fuel:        t76Base * fuelRate,
+      t76Total,
+      s76Total,
+    };
+  } else {
+    return {
+      delivery:    s76Total,
+      service:     "S76",
+      baseFreight: s76Base,
+      fuel:        s76Base * fuelRate,
+      t76Total,
+      s76Total,
+    };
+  }
+}
+
+// ── Main export ────────────────────────────────────────────────────────
 export function calculateAustralia({
-  value      = 0,   // AUD
-  valueGBP   = 0,   // GBP (for disbursement calc)
+  value      = 0,   // Invoice value in AUD
+  valueGBP   = 0,   // Invoice value in GBP (for disbursement)
   weight     = 0,
   cbm        = 0,
   transport  = "Courier",
-  zone       = "",  // zone code from customer record
+  zone       = "",
+  zoneNumber = null,
   settings   = {},
 }) {
-  const zoneCode = String(zone || "").toUpperCase().trim();
-  const t = transport.toLowerCase();
+  const s = settings;
 
-  const dutyRate = 0.05;
-  const duty     = value * dutyRate;
+  // Merge zone tables: Firestore overrides fall back to Excel defaults
+  const t76 = Object.assign({}, DEFAULT_T76, s.t76Zones || {});
+  const s76 = Object.assign({}, DEFAULT_S76, s.s76Zones || {});
+  const fuel = s.fuelSurcharge ?? 0.406;
 
-  // ── COURIER ─────────────────────────────────────────────────────
+  const zoneCode = resolveZoneCode(zone, zoneNumber);
+  const t        = transport.toLowerCase();
+
+  // Duty (always shown separately — never in C&D total)
+  const dutyAUD = value * (s.dutyRate ?? 0.05);
+
+  // ── COURIER ────────────────────────────────────────────────────
   if (t === "courier") {
-    const abfCharge    = value <= 1000 ? 0 : 190;
-    const disbFixed    = 20;
-    const disbPct      = valueGBP * 0.03;
-    const disbursement = disbFixed + disbPct;
+    if (value <= 1000) {
+      return {
+        country: "AUSTRALIA", currency: "AUD", transport: "Courier", zone: zoneCode,
+        duty: 0, clearance: 0, delivery: 0, total: 0,
+        breakdown: {},
+        note: "Invoice ≤ AUD 1,000: DHL direct to client. No duty or ABF charges apply.",
+      };
+    }
 
-    let delivResult = { delivery: 0, service: "DHL direct (≤ AUD 1,000)" };
-    if (value > 1000 && zoneCode) delivResult = calcDelivery(zoneCode, weight, settings);
+    const abf          = s.courier?.abfChargeOver1000 ?? 190;
+    const govtCharge   = s.courier?.govtCharge        ?? 190;
+    const disbFixed    = s.courier?.disbursementFixed  ?? 20;
+    const disbRate     = s.courier?.disbursementRate   ?? 0.03;
+    const disbursement = disbFixed + (valueGBP * disbRate);
 
-    const clearance = abfCharge + disbursement;
+    const delivResult  = calcLocalDelivery(zoneCode, weight, t76, s76, fuel);
+
+    const clearance = abf + govtCharge + disbursement;
     const total     = clearance + delivResult.delivery;
 
     return {
-      country: "AUSTRALIA", currency: "AUD", transport: "Courier",
-      zone: zoneCode, duty,
-      clearance, delivery: delivResult.delivery, total,
-      deliveryService: delivResult.service,
+      country: "AUSTRALIA", currency: "AUD", transport: "Courier", zone: zoneCode,
+      duty: dutyAUD, clearance, delivery: delivResult.delivery, total,
       breakdown: {
-        "Duty (5%)":                          duty,
-        "ABF charge":                         abfCharge,
-        "Disbursement — fixed":               disbFixed,
-        "Disbursement — 3% of GBP value":     disbPct,
-        [`Local delivery — ${delivResult.service} (incl. 40.6% fuel)`]: delivResult.delivery,
+        "ABF charge":                               abf,
+        "Australia Govt charge":                    govtCharge,
+        "Disbursement (fixed)":                     disbFixed,
+        "Disbursement (3% of GBP value)":           valueGBP * disbRate,
+        [`Local delivery — ${delivResult.service} (incl. ${(fuel*100).toFixed(1)}% fuel)`]: delivResult.delivery,
+        "Service compared — T76":                   delivResult.t76Total,
+        "Service compared — S76":                   delivResult.s76Total,
       },
-      note: value <= 1000
-        ? "Invoice ≤ AUD 1,000: DHL direct, no ABF charge applies."
-        : `Delivery service: ${delivResult.service} selected (lower cost of T76 / S76)`,
+      note: `Local delivery: ${delivResult.service} selected (lower cost). Zone: ${zoneCode || "not set"}. Duty payable by consignee.`,
     };
   }
 
-  // ── AIR ──────────────────────────────────────────────────────────
+  // ── AIR ─────────────────────────────────────────────────────────
   if (t === "air") {
-    const s = settings.air || {};
-    const elec   = value > 10000
-      ? (s.electronicProcessingOver10k  ?? 201)
-      : (s.electronicProcessingUnder10k ?? 90);
-    const quar   = s.quarantineProcessing          ?? 49;
-    const decl   = value > 10000
-      ? (s.declarationOver10k           ?? 152)
-      : (s.declarationUnder10k          ?? 50);
-    const docFee = s.destinationAirlineDocFee       ?? 80;
-    const cust   = s.customsClearanceFee            ?? 130;
-    const chain  = s.chainOfResponsibility          ?? 10;
-    const cmr    = s.cmrFee                         ?? 20;
-    const destQ  = s.destinationQuarantineProcessing ?? 45;
-    const destH  = s.destinationHandling            ?? 85;
+    const electronicProcessing  = value > 10000
+      ? (s.air?.electronicProcessingOver10k  ?? 201)
+      : (s.air?.electronicProcessingUnder10k ?? 90);
+    const quarantineProcessing  = s.air?.quarantineProcessing             ?? 49;
+    const declarationCharge     = value > 10000
+      ? (s.air?.declarationOver10k           ?? 152)
+      : (s.air?.declarationUnder10k          ?? 50);
+    const airlineDocFee         = s.air?.destinationAirlineDocFee         ?? 80;
+    const customsClearance      = s.air?.customsClearanceFee              ?? 130;
+    const chainOfResponsibility = s.air?.chainOfResponsibility            ?? 10;
+    const cmrFee                = s.air?.cmrFee                           ?? 20;
+    const destQuarantine        = s.air?.destinationQuarantineProcessing  ?? 45;
+    const destHandling          = s.air?.destinationHandling              ?? 85;
 
-    // Weight-based
-    const cargoPerKg = s.destinationCargoTerminalOpsPerKg ?? 0.65;
-    const intlMin    = s.destinationIntlTerminalMin        ?? 80;
-    const intlPerKg  = s.destinationIntlTerminalPerKg      ?? 0.175;
-    const cargoOps   = weight * cargoPerKg;
-    const intlTerm   = Math.max(intlMin, weight * intlPerKg);
+    const cargoOpsPerKg = s.air?.destinationCargoTerminalOpsPerKg ?? 0.65;
+    const intlTermMin   = s.air?.destinationIntlTerminalMin        ?? 80;
+    const intlTermPerKg = s.air?.destinationIntlTerminalPerKg      ?? 0.175;
+    const cargoTermOps  = weight * cargoOpsPerKg;
+    const intlTerminal  = Math.max(intlTermMin, weight * intlTermPerKg);
 
-    const clearance = elec + quar + decl + docFee + cust + chain + cmr +
-                      cargoOps + intlTerm + destQ + destH;
+    const fixedClearance =
+      electronicProcessing + quarantineProcessing + declarationCharge +
+      airlineDocFee + customsClearance + chainOfResponsibility + cmrFee +
+      cargoTermOps + intlTerminal + destQuarantine + destHandling;
 
-    let delivResult = { delivery: 0, service: "none" };
-    if (zoneCode) delivResult = calcDelivery(zoneCode, weight, settings);
+    const delivResult = zoneCode
+      ? calcLocalDelivery(zoneCode, weight, t76, s76, fuel)
+      : { delivery: 0, service: "none" };
 
-    const total = duty + clearance + delivResult.delivery;
+    const total = dutyAUD + fixedClearance + delivResult.delivery;
 
     return {
-      country: "AUSTRALIA", currency: "AUD", transport: "Air",
-      zone: zoneCode, duty, clearance,
-      delivery: delivResult.delivery, total,
-      deliveryService: delivResult.service,
+      country: "AUSTRALIA", currency: "AUD", transport: "Air", zone: zoneCode,
+      duty: dutyAUD, clearance: fixedClearance, delivery: delivResult.delivery, total,
       breakdown: {
-        "Duty (5%)":                          duty,
-        "Electronic processing":              elec,
-        "Quarantine processing":              quar,
-        "Declaration charge":                 decl,
-        "Airline document fee":               docFee,
-        "Customs clearance":                  cust,
-        "Chain of responsibility":            chain,
-        "CMR fee":                            cmr,
-        "Cargo terminal ops (per kg × 0.65)": cargoOps,
-        "International terminal (min AUD 80, per kg × 0.175)": intlTerm,
-        "Destination quarantine":             destQ,
-        "Destination handling":               destH,
-        [`Local delivery — ${delivResult.service} (incl. 40.6% fuel)`]: delivResult.delivery,
+        "Electronic processing":                          electronicProcessing,
+        "Quarantine processing":                          quarantineProcessing,
+        "Declaration charge":                             declarationCharge,
+        "Airline document fee":                           airlineDocFee,
+        "Customs clearance":                              customsClearance,
+        "Chain of responsibility":                        chainOfResponsibility,
+        "CMR fee":                                        cmrFee,
+        "Cargo terminal ops (per kg × 0.65)":            cargoTermOps,
+        "International terminal (min 80, per kg × 0.175)": intlTerminal,
+        "Destination quarantine":                         destQuarantine,
+        "Destination handling":                           destHandling,
+        [`Local delivery — ${delivResult.service} (incl. ${(fuel*100).toFixed(1)}% fuel)`]: delivResult.delivery,
+        ...(delivResult.t76Total ? { "Service compared — T76": delivResult.t76Total, "Service compared — S76": delivResult.s76Total } : {}),
       },
+      note: `Duty payable by consignee. Zone: ${zoneCode || "not set"}.`,
     };
   }
 
-  // ── SEA ───────────────────────────────────────────────────────────
+  // ── SEA ──────────────────────────────────────────────────────────
   if (t === "sea") {
-    const s = settings.sea || {};
-    const portCharges  = s.destinationPortCharges       ?? 95;
-    const terminal     = s.destinationTerminalHandling  ?? 20;
-    const delivOrder   = s.deliveryOrderFee             ?? 50;
-    const destQ        = s.destinationQuarantineFee     ?? 45;
-    const cmr          = s.cmrFee                       ?? 25;
-    const customs      = s.customsClearance             ?? 125;
-    const elecEntry    = s.electronicEntryProcessing    ?? 201;
-    const quarFee      = s.quarantineProcessingFee      ?? 49;
-    const declFee      = s.declarationProcessingFee     ?? 152;
-    const cbmRate      = s.perCbmRate                   ?? 20;
-    const cbmCharge    = cbm * cbmRate;
+    const destPortCharges      = s.sea?.destinationPortCharges      ?? 95;
+    const terminalHandling     = s.sea?.destinationTerminalHandling  ?? 20;
+    const deliveryOrderFee     = s.sea?.deliveryOrderFee             ?? 50;
+    const destQuarantineFee    = s.sea?.destinationQuarantineFee     ?? 45;
+    const cmrFee               = s.sea?.cmrFee                       ?? 25;
+    const customsClearance     = s.sea?.customsClearance             ?? 125;
+    const electronicEntry      = s.sea?.electronicEntryProcessing    ?? 201;
+    const quarantineFee        = s.sea?.quarantineFee                ?? 49;
+    const declarationFee       = s.sea?.declarationFee               ?? 152;
+    const cbmCharge            = cbm * (s.sea?.perCbmRate ?? 20);
 
-    const clearance = portCharges + terminal + delivOrder + destQ + cmr +
-                      customs + elecEntry + quarFee + declFee + cbmCharge;
+    const clearance = destPortCharges + terminalHandling + deliveryOrderFee +
+      destQuarantineFee + cmrFee + customsClearance + electronicEntry +
+      quarantineFee + declarationFee + cbmCharge;
 
-    let delivResult = { delivery: 0, service: "none" };
-    if (zoneCode) delivResult = calcDelivery(zoneCode, weight, settings);
+    const delivResult = zoneCode
+      ? calcLocalDelivery(zoneCode, weight, t76, s76, fuel)
+      : { delivery: 0, service: "none" };
 
-    const total = duty + clearance + delivResult.delivery;
+    const total = dutyAUD + clearance + delivResult.delivery;
 
     return {
-      country: "AUSTRALIA", currency: "AUD", transport: "Sea",
-      zone: zoneCode, duty, clearance,
-      delivery: delivResult.delivery, total,
-      deliveryService: delivResult.service,
+      country: "AUSTRALIA", currency: "AUD", transport: "Sea", zone: zoneCode,
+      duty: dutyAUD, clearance, delivery: delivResult.delivery, total,
       breakdown: {
-        "Duty (5%)":                          duty,
-        "Destination port charges":           portCharges,
-        "Terminal handling":                  terminal,
-        "Delivery order fee":                 delivOrder,
-        "Destination quarantine":             destQ,
-        "CMR fee":                            cmr,
-        "Customs clearance":                  customs,
-        "Electronic entry":                   elecEntry,
-        "Quarantine fee":                     quarFee,
-        "Declaration fee":                    declFee,
-        "CBM charge":                         cbmCharge,
-        [`Local delivery — ${delivResult.service} (incl. 40.6% fuel)`]: delivResult.delivery,
+        "Destination port charges":     destPortCharges,
+        "Terminal handling":            terminalHandling,
+        "Delivery order fee":           deliveryOrderFee,
+        "Destination quarantine":       destQuarantineFee,
+        "CMR fee":                      cmrFee,
+        "Customs clearance":            customsClearance,
+        "Electronic entry":             electronicEntry,
+        "Quarantine fee":               quarantineFee,
+        "Declaration fee":              declarationFee,
+        "CBM charge":                   cbmCharge,
+        [`Local delivery — ${delivResult.service} (incl. ${(fuel*100).toFixed(1)}% fuel)`]: delivResult.delivery,
+        ...(delivResult.t76Total ? { "Service compared — T76": delivResult.t76Total, "Service compared — S76": delivResult.s76Total } : {}),
       },
+      note: `Duty payable by consignee. Zone: ${zoneCode || "not set"}.`,
     };
   }
 
-  return { country: "AUSTRALIA", currency: "AUD", duty: 0, clearance: 0, delivery: 0, total: 0, error: "Invalid transport" };
+  return {
+    country: "AUSTRALIA", currency: "AUD",
+    duty: 0, clearance: 0, delivery: 0, total: 0,
+    error: "Invalid transport type",
+  };
 }
-
-// Export tables so settings page can display them
-export { T76, S76, FUEL };
