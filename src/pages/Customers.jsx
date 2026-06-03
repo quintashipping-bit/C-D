@@ -65,8 +65,8 @@ export default function Customers() {
   const [migrating, setMigrating] = useState(false);
   const [form, setForm]           = useState(EMPTY_FORM);
 
-  const isAU = form.country === "Australia";
-  const isZA = form.country === "South Africa";
+  const isAU = form.country?.toLowerCase() === "australia";
+  const isZA = form.country?.toLowerCase() === "south africa";
 
   useEffect(() => { load(); }, []);
 
@@ -78,9 +78,13 @@ export default function Customers() {
   function resetForm() { setForm(EMPTY_FORM); setEditId(null); setShowForm(false); }
 
   function startEdit(c) {
+    // Normalise country to match dropdown values (title case)
+    const normCountry = COUNTRIES.find(
+      opt => opt.toLowerCase() === (c.country || "").toLowerCase()
+    ) || c.country || "";
     setForm({
       name:      c.name      || "",
-      country:   c.country   || "",
+      country:   normCountry,
       contact:   c.contact   || "",
       email:     c.email     || "",
       phone:     c.phone     || "",
@@ -95,14 +99,14 @@ export default function Customers() {
   }
 
   function handleNameChange(name) {
-    const zoneCode = (form.country === "Australia")
+    const zoneCode = (form.country?.toLowerCase() === "australia")
       ? (AU_ZONE_LOOKUP[name.trim().toUpperCase()] || form.zoneCode)
       : form.zoneCode;
     setForm(p => ({ ...p, name, zoneCode }));
   }
 
   function handleCountryChange(country) {
-    const zoneCode = (country === "Australia")
+    const zoneCode = (country?.toLowerCase() === "australia")
       ? (AU_ZONE_LOOKUP[form.name.trim().toUpperCase()] || form.zoneCode)
       : form.zoneCode;
     setForm(p => ({ ...p, country, zoneCode }));
@@ -116,7 +120,7 @@ export default function Customers() {
       contact: form.contact, email: form.email,
       phone: form.phone, notes: form.notes,
     };
-    if (form.country === "Australia") {
+    if (form.country?.toLowerCase() === "australia") {
       Object.assign(base, {
         zoneCode:  form.zoneCode,
         zone:      form.zoneCode, // keep in sync
