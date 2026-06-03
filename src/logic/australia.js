@@ -113,7 +113,10 @@ export function calculateAustralia({
   const t        = transport.toLowerCase();
 
   // Duty (always shown separately — never in C&D total)
-  const dutyAUD = value * (s.dutyRate ?? 0.05);
+  // Duty rate: always 5% per Excel. If stored in Firestore as 5 (not 0.05), normalise.
+  const rawDutyRate = s.dutyRate ?? 0.05;
+  const dutyRate = rawDutyRate > 1 ? rawDutyRate / 100 : rawDutyRate;
+  const dutyAUD = value * dutyRate;
 
   // ── COURIER ────────────────────────────────────────────────────
   if (t === "courier") {
@@ -183,7 +186,7 @@ export function calculateAustralia({
       ? calcLocalDelivery(zoneCode, weight, t76, s76, fuel)
       : { delivery: 0, service: "none" };
 
-    const total = dutyAUD + fixedClearance + delivResult.delivery;
+    const total = fixedClearance + delivResult.delivery;
 
     return {
       country: "AUSTRALIA", currency: "AUD", transport: "Air", zone: zoneCode,
@@ -228,7 +231,7 @@ export function calculateAustralia({
       ? calcLocalDelivery(zoneCode, weight, t76, s76, fuel)
       : { delivery: 0, service: "none" };
 
-    const total = dutyAUD + clearance + delivResult.delivery;
+    const total = clearance + delivResult.delivery;
 
     return {
       country: "AUSTRALIA", currency: "AUD", transport: "Sea", zone: zoneCode,
