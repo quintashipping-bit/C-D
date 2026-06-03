@@ -124,19 +124,18 @@ export default function Quotes() {
     let quote = null;
 
     if (country === "AUSTRALIA") {
-      // zoneCode is the text code e.g. "VV1" — stored on customer record
-      // Fall back to zone field in case it's a code stored there
+      // Resolve zone code — handles both new (zoneCode) and old (zone as string) formats
       const zoneCode = selectedCustomer.zoneCode
-        || (isNaN(selectedCustomer.zone) ? selectedCustomer.zone : "")
-        || "";
+        || (selectedCustomer.zone && isNaN(String(selectedCustomer.zone).trim())
+            ? String(selectedCustomer.zone).trim().toUpperCase()
+            : "");
       quote = calculateAustralia({
-        value:      valueInIC,   // AUD
+        value:    valueInIC,
         valueGBP,
         weight, cbm,
-        transport:  form.transport,
-        zone:       zoneCode,
-        zoneNumber: null,
-        settings:   countrySettings.australia || {},
+        transport: form.transport,
+        zone:      zoneCode,
+        settings:  countrySettings.australia || {},
       });
 
     } else if (country === "SOUTH AFRICA") {
