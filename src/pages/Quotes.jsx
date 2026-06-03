@@ -282,19 +282,19 @@ export default function Quotes() {
         <div className="grid md:grid-cols-2 gap-8 items-start">
 
           {/* ══ FORM ══ */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+          <div className="space-y-4">
 
-            {/* Office selector — only shown for non-AU/ZA destinations */}
+            {/* ── Office selector ── */}
             {!isAUorZA && (
-              <div>
-                <label className="block text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Your office</label>
-                <div className="flex gap-2">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-3">Your office location</div>
+                <div className="grid grid-cols-3 gap-2">
                   {OFFICES.map(o => (
                     <button key={o.id} onClick={() => changeOffice(o.id)}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold border-2 transition-all ${
+                      className={`py-3 px-2 rounded-lg text-sm font-semibold border transition-all ${
                         office === o.id
-                          ? "border-[#C4006A] bg-[#C4006A]/10 text-[#f472b6]"
-                          : "border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500"
+                          ? "border-[#C4006A] bg-[#C4006A]/15 text-[#f472b6] shadow-[0_0_12px_rgba(196,0,106,0.2)]"
+                          : "border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-slate-200"
                       }`}>
                       {o.label}
                     </button>
@@ -303,87 +303,127 @@ export default function Quotes() {
               </div>
             )}
 
-            {/* Customer */}
-            <div>
-              <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Customer</label>
-              <select className="w-full bg-slate-800 text-slate-100" value={form.customerId} onChange={e => selectCustomer(e.target.value)}>
-                <option value="" className="bg-slate-800 text-slate-400">— Select customer —</option>
+            {/* ── Customer ── */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-3">Customer</div>
+              <select
+                value={form.customerId}
+                onChange={e => selectCustomer(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3 py-3 text-sm focus:outline-none focus:border-[#C4006A] transition-colors appearance-none cursor-pointer"
+              >
+                <option value="" className="bg-slate-900 text-slate-400">— Select customer —</option>
                 {customers.map(c => (
-                  <option key={c.id} value={c.id} className="bg-slate-800 text-white">{c.name} ({c.country})</option>
+                  <option key={c.id} value={c.id} className="bg-slate-900 text-slate-100">{c.name} ({c.country})</option>
                 ))}
               </select>
-            </div>
 
-            {/* Customer info strip */}
-            {selectedCustomer && (
-              <div className="bg-slate-800 rounded-lg p-3 text-sm space-y-1.5">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Country</span>
-                  <span className="font-medium">{selectedCustomer.country}</span>
-                </div>
-                {selectedCustomer.zone ? (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Zone</span>
-                    <span className="font-medium">{selectedCustomer.zone}</span>
+              {/* Customer info strip */}
+              {selectedCustomer && (
+                <div className="mt-3 border border-slate-700 rounded-lg overflow-hidden">
+                  <div className="bg-slate-800/60 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
+                    <span className="text-xs text-slate-400 uppercase tracking-wide font-medium">Destination</span>
+                    <span className="text-sm font-semibold text-white">{selectedCustomer.country}</span>
                   </div>
-                ) : null}
-                {Number(selectedCustomer.rateKg) > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Rate/kg</span>
-                    <span className="font-medium">{selectedCustomer.rateKg}</span>
+                  {(selectedCustomer.zoneCode || selectedCustomer.zone) && (
+                    <div className="bg-slate-800/30 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
+                      <span className="text-xs text-slate-400 uppercase tracking-wide font-medium">Zone</span>
+                      <span className="text-sm font-mono font-bold text-[#f472b6]">
+                        {selectedCustomer.zoneCode || selectedCustomer.zone}
+                      </span>
+                    </div>
+                  )}
+                  <div className="bg-slate-800/30 px-4 py-2 flex justify-between items-center">
+                    <span className="text-xs text-slate-400 uppercase tracking-wide font-medium">Quote currency</span>
+                    <span className="text-sm font-bold text-[#f472b6]">
+                      {isAUorZA ? ic : officeCurrency} {SYMBOLS[isAUorZA ? ic : officeCurrency]}
+                    </span>
                   </div>
-                )}
-                {Number(selectedCustomer.surcharge) > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Surcharge</span>
-                    <span className="font-medium">{selectedCustomer.surcharge}</span>
-                  </div>
-                )}
-                <div className="flex justify-between border-t border-slate-700 pt-1.5">
-                  <span className="text-slate-400">Quote currency</span>
-                  <span className="font-semibold text-[#f472b6]">
-                    {isAUorZA ? ic : officeCurrency} {SYMBOLS[isAUorZA ? ic : officeCurrency]}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Value input */}
-            <div>
-              <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">
-                Goods value ({isAUorZA ? ic : officeCurrency})
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
-                  {SYMBOLS[isAUorZA ? ic : officeCurrency] || (isAUorZA ? ic : officeCurrency)}
-                </span>
-                <input type="number" min="0" step="0.01" placeholder="0.00"
-                  value={form.valueInput} onChange={e => update("valueInput", e.target.value)}
-                  className="w-full pl-8" />
-              </div>
-              {!isAUorZA && ic !== officeCurrency && valueGBP !== null && form.valueInput && (
-                <div className="text-xs text-slate-500 mt-1 flex justify-between">
-                  <span>≈ £{valueGBP.toFixed(2)} GBP</span>
-                  <span>1 GBP = {rate1GBP?.toFixed(4)} {ic}</span>
                 </div>
               )}
             </div>
 
-            <InputField label="Weight (kg)"   placeholder="0"    value={form.weight} onChange={v => update("weight", v)} type="number" />
-            <InputField label="Pieces"         placeholder="0"    value={form.pieces} onChange={v => update("pieces", v)} type="number" />
-            <InputField label="CBM (sea only)" placeholder="0.00" value={form.cbm}    onChange={v => update("cbm", v)}    type="number" />
+            {/* ── Shipment details ── */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-4">Shipment details</div>
 
-            <div>
-              <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Transport mode</label>
-              <select className="w-full bg-slate-800 text-slate-100" value={form.transport} onChange={e => update("transport", e.target.value)}>
-                <option>Courier</option>
-                <option>Air</option>
-                <option>Sea</option>
-              </select>
+              {/* Goods value */}
+              <div className="mb-4">
+                <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">
+                  Invoice value ({isAUorZA ? ic : officeCurrency})
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 font-semibold text-sm pointer-events-none">
+                    {SYMBOLS[isAUorZA ? ic : officeCurrency] || (isAUorZA ? ic : officeCurrency)}
+                  </span>
+                  <input
+                    type="number" min="0" step="0.01" placeholder="0.00"
+                    value={form.valueInput}
+                    onChange={e => update("valueInput", e.target.value)}
+                    className="w-full pl-8 bg-slate-800 border border-slate-700 text-slate-100 rounded-lg py-3 text-sm focus:outline-none focus:border-[#C4006A] transition-colors placeholder-slate-600"
+                  />
+                </div>
+                {!isAUorZA && ic !== officeCurrency && valueGBP !== null && form.valueInput && (
+                  <div className="text-xs text-slate-500 mt-1.5 flex justify-between">
+                    <span>≈ £{valueGBP.toFixed(2)} GBP</span>
+                    <span>Rate: 1 GBP = {rate1GBP?.toFixed(4)} {ic}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Weight / Pieces / CBM row */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div>
+                  <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Weight (kg)</label>
+                  <input
+                    type="number" placeholder="0" value={form.weight}
+                    onChange={e => update("weight", e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3 py-3 text-sm focus:outline-none focus:border-[#C4006A] transition-colors placeholder-slate-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Pieces</label>
+                  <input
+                    type="number" placeholder="0" value={form.pieces}
+                    onChange={e => update("pieces", e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3 py-3 text-sm focus:outline-none focus:border-[#C4006A] transition-colors placeholder-slate-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">CBM</label>
+                  <input
+                    type="number" placeholder="0.00" value={form.cbm}
+                    onChange={e => update("cbm", e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3 py-3 text-sm focus:outline-none focus:border-[#C4006A] transition-colors placeholder-slate-600"
+                  />
+                </div>
+              </div>
+
+              {/* Transport */}
+              <div>
+                <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Transport mode</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["Courier","Air","Sea"].map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => update("transport", mode)}
+                      className={`py-3 rounded-lg text-sm font-semibold border transition-all ${
+                        form.transport === mode
+                          ? "border-[#C4006A] bg-[#C4006A]/15 text-[#f472b6] shadow-[0_0_12px_rgba(196,0,106,0.15)]"
+                          : "border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                      }`}
+                    >
+                      {mode === "Courier" ? "📦 Courier" : mode === "Air" ? "✈ Air" : "🚢 Sea"}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <button onClick={calculate} disabled={ratesLoading}
-              className="w-full py-3 bg-[#C4006A] hover:bg-[#a3005a] disabled:opacity-50 rounded-lg font-semibold">
+            <button
+              onClick={calculate}
+              disabled={ratesLoading}
+              className="w-full py-4 bg-[#C4006A] hover:bg-[#a3005a] disabled:opacity-50 rounded-xl font-bold text-base tracking-wide transition-all shadow-[0_4px_20px_rgba(196,0,106,0.3)] hover:shadow-[0_4px_28px_rgba(196,0,106,0.45)]"
+            >
               {ratesLoading ? "Loading rates…" : "Calculate Quote"}
             </button>
           </div>
@@ -494,8 +534,13 @@ function InputField({ label, value, onChange, type = "text", placeholder }) {
   return (
     <div>
       <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">{label}</label>
-      <input type={type} placeholder={placeholder} value={value}
-        onChange={e => onChange(e.target.value)} className="w-full" />
+      <input
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#C4006A] transition-colors placeholder-slate-500"
+      />
     </div>
   );
 }
