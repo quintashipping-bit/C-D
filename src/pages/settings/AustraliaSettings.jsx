@@ -4,10 +4,42 @@ import { db } from "../../firebase/config";
 import Sidebar from "../../components/Sidebar";
 import { DEFAULT_T76, DEFAULT_S76 } from "../../logic/australia";
 
-const ZONE_CODES = ["TA1","NN1","QQ1","SS1","WW1","VV1","QQ2","QQ3","QQ4","WW2"];
+const ZONE_CODES = [
+  "NN1","NN2","NN3","NN4","NN5","NN6",
+  "NT1","NT2","NT3",
+  "QQ1","QQ2","QQ3","QQ4","QQ5",
+  "SS1","SS2","SS3",
+  "TA1","TA2",
+  "VV1","VV2","VV3",
+  "WW1","WW2","WW3","WW4",
+];
 const ZONE_CITIES = {
-  TA1:"Tasmania", NN1:"Sydney", QQ1:"Brisbane", SS1:"Adelaide", WW1:"Perth",
-  VV1:"Melbourne", QQ2:"Brisbane 2", QQ3:"Brisbane 3", QQ4:"Brisbane 4", WW2:"Perth 2",
+  NN1:"Sydney / Canberra / Newcastle / Wollongong",
+  NN2:"Coffs Harbour / Lismore / Port Macquarie",
+  NN3:"Nowra",
+  NN4:"Armidale / Tamworth",
+  NN5:"Albury / Wodonga / Wagga Wagga",
+  NN6:"Dubbo / Orange",
+  NT1:"Darwin / Katherine",
+  NT2:"Alice Springs / Tennant Creek",
+  NT3:"Gove / Kununurra",
+  QQ1:"Brisbane / Gold Coast / Toowoomba / Maroochydore",
+  QQ2:"Rockhampton / Bundaberg / Emerald / Gladstone",
+  QQ3:"Cairns / Townsville / Mackay",
+  QQ4:"Mount Isa",
+  QQ5:"Far remote Queensland",
+  SS1:"Adelaide",
+  SS2:"Mount Gambier / Broken Hill",
+  SS3:"Far remote South Australia",
+  TA1:"Hobart / Launceston",
+  TA2:"Far remote Tasmania",
+  VV1:"Melbourne / Geelong",
+  VV2:"Ballarat / Bendigo / Shepparton / Warrnambool / Morwell",
+  VV3:"Far remote Victoria",
+  WW1:"Perth / Bunbury / Geraldton / Kalgoorlie",
+  WW2:"Far remote Perth metro",
+  WW3:"Broome / Port Hedland / Karratha / Newman / Carnarvon",
+  WW4:"Leinster / far remote WA",
 };
 
 const DEFAULTS = {
@@ -47,7 +79,7 @@ const DEFAULTS = {
     declarationFee:               152,
     perCbmRate:                   20,
   },
-  t76Zones: { ...DEFAULT_T76 },
+  t76Zones: { ...DEFAULT_T76 }, // all 26 zones — blank rates auto-filled from DEFAULT_T76
   s76Zones: { ...DEFAULT_S76 },
 };
 

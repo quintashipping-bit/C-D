@@ -16,6 +16,7 @@
 // ── Default zone tables (from Excel rows 9-15) ─────────────────────────
 // These are the defaults — can be overridden per-zone in Firestore settings/australia
 export const DEFAULT_T76 = {
+  // Zones with rates from Excel C&D Calculator V1.06
   TA1: { base: 17.91, perKgAfter20: 0.4158  },
   NN1: { base: 19.64, perKgAfter20: 0.5458  },
   QQ1: { base: 25.41, perKgAfter20: 0.7277  },
@@ -26,9 +27,27 @@ export const DEFAULT_T76 = {
   QQ3: { base: 60.07, perKgAfter20: 2.8069  },
   QQ4: { base: 65.85, perKgAfter20: 4.1584  },
   WW2: { base: 77.40, perKgAfter20: 4.6782  },
+  // Additional TNT zones — rates to be set in Settings → Australia
+  NN2: { base: 0, perKgAfter20: 0 },
+  NN3: { base: 0, perKgAfter20: 0 },
+  NN4: { base: 0, perKgAfter20: 0 },
+  NN5: { base: 0, perKgAfter20: 0 },
+  NN6: { base: 0, perKgAfter20: 0 },
+  NT1: { base: 0, perKgAfter20: 0 },
+  NT2: { base: 0, perKgAfter20: 0 },
+  NT3: { base: 0, perKgAfter20: 0 },
+  QQ5: { base: 0, perKgAfter20: 0 },
+  SS2: { base: 0, perKgAfter20: 0 },
+  SS3: { base: 0, perKgAfter20: 0 },
+  TA2: { base: 0, perKgAfter20: 0 },
+  VV2: { base: 0, perKgAfter20: 0 },
+  VV3: { base: 0, perKgAfter20: 0 },
+  WW3: { base: 0, perKgAfter20: 0 },
+  WW4: { base: 0, perKgAfter20: 0 },
 };
 
 export const DEFAULT_S76 = {
+  // Zones with rates from Excel C&D Calculator V1.06
   TA1: { base: 12,     perKgAfter5: 0.8997  },
   NN1: { base: 15,     perKgAfter5: 2.999   },
   QQ1: { base: 23.99,  perKgAfter5: 5.998   },
@@ -39,6 +58,23 @@ export const DEFAULT_S76 = {
   QQ3: { base: 56.98,  perKgAfter5: 17.3942 },
   QQ4: { base: 74.98,  perKgAfter5: 25.1916 },
   WW2: { base: 104.97, perKgAfter5: 28.1906 },
+  // Additional TNT zones — rates to be set in Settings → Australia
+  NN2: { base: 0, perKgAfter5: 0 },
+  NN3: { base: 0, perKgAfter5: 0 },
+  NN4: { base: 0, perKgAfter5: 0 },
+  NN5: { base: 0, perKgAfter5: 0 },
+  NN6: { base: 0, perKgAfter5: 0 },
+  NT1: { base: 0, perKgAfter5: 0 },
+  NT2: { base: 0, perKgAfter5: 0 },
+  NT3: { base: 0, perKgAfter5: 0 },
+  QQ5: { base: 0, perKgAfter5: 0 },
+  SS2: { base: 0, perKgAfter5: 0 },
+  SS3: { base: 0, perKgAfter5: 0 },
+  TA2: { base: 0, perKgAfter5: 0 },
+  VV2: { base: 0, perKgAfter5: 0 },
+  VV3: { base: 0, perKgAfter5: 0 },
+  WW3: { base: 0, perKgAfter5: 0 },
+  WW4: { base: 0, perKgAfter5: 0 },
 };
 
 // Zone number → code mapping (from Excel col header row 9)
