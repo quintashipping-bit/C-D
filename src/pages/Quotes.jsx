@@ -426,7 +426,9 @@ function ResultPanel({ result, customer, form, rates, officeCurrency, onSave, sa
         <div className="font-bold text-lg">{customer?.name}</div>
         <div className="text-slate-400 text-sm">{result.country} · {form.transport} · {currency}</div>
         {result.zone ? <div className="text-slate-400 text-sm">Zone: {result.zone}</div> : null}
-        {result.note  && <div className="text-amber-400 text-xs mt-1 leading-relaxed">{result.note}</div>}
+        {result.note  && !result.note.includes("Duty payable") && (
+          <div className="text-amber-400 text-xs mt-1 leading-relaxed">{result.note}</div>
+        )}
         {result.error && <div className="text-red-400 text-xs mt-1">{result.error}</div>}
       </div>
 
@@ -446,9 +448,9 @@ function ResultPanel({ result, customer, form, rates, officeCurrency, onSave, sa
       {/* Duty box — separate */}
       {result.duty > 0 && (
         <div className="bg-amber-900/20 border border-amber-800/50 rounded-xl p-4">
-          <div className="text-xs text-amber-400 mb-1 uppercase tracking-wide">Duty (shown separately to trader)</div>
+          <div className="text-xs text-amber-400 mb-1 uppercase tracking-wide">Duty</div>
           <div className="text-2xl font-bold text-amber-300">{sym}{fmt(result.duty)}</div>
-          <div className="text-xs text-slate-500 mt-1">Payable by consignee — not included in C&D total above</div>
+          <div className="text-xs text-slate-500 mt-1">Not included in C&D total above</div>
         </div>
       )}
 

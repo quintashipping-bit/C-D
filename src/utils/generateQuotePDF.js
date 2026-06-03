@@ -137,7 +137,7 @@ export default function generateQuotePDF(quote) {
     pdf.setDrawColor(...pink); pdf.setLineWidth(0.5);
     pdf.rect(margin, y, W - margin * 2, 14, "S");
     pdf.setTextColor(...white); pdf.setFontSize(10); pdf.setFont("helvetica", "bold");
-    pdf.text("DUTY  (payable by consignee — not included in C&D total)", margin + 4, y + 9);
+    pdf.text("DUTY", margin + 4, y + 9);
     pdf.setFontSize(13);
     pdf.setTextColor(244, 114, 182); // pink-400
     pdf.text(`${quote.currency || "GBP"} ${fmt(quote.duty)}`, W - margin - 4, y + 9, { align: "right" });

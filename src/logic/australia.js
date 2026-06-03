@@ -134,22 +134,21 @@ export function calculateAustralia({
 
     const delivResult  = calcLocalDelivery(zoneCode, weight, t76, s76, fuel);
 
-    const clearance = abf + govtCharge + disbursement;
+    // ABF lookup determines the GOVT charge amount — shown as one line on quote
+    const govtChargeAmount = abf; // abf IS the govt charge (same value, different label)
+    const clearance = govtChargeAmount + disbursement;
     const total     = clearance + delivResult.delivery;
 
     return {
       country: "AUSTRALIA", currency: "AUD", transport: "Courier", zone: zoneCode,
       duty: dutyAUD, clearance, delivery: delivResult.delivery, total,
       breakdown: {
-        "ABF charge":                               abf,
-        "Australia Govt charge":                    govtCharge,
-        "Disbursement (fixed)":                     disbFixed,
-        "Disbursement (3% of GBP value)":           valueGBP * disbRate,
-        [`Local delivery — ${delivResult.service} (incl. ${(fuel*100).toFixed(1)}% fuel)`]: delivResult.delivery,
-        "Service compared — T76":                   delivResult.t76Total,
-        "Service compared — S76":                   delivResult.s76Total,
+        "Australia GOVT Charge":  govtChargeAmount,
+        "Disbursement":           disbursement,
+        "Local delivery":         delivResult.delivery,
       },
-      note: `Local delivery: ${delivResult.service} selected (lower cost). Zone: ${zoneCode || "not set"}. Duty payable by consignee.`,
+      serviceUsed: delivResult.service,
+      note: `Local delivery: ${delivResult.service || "none"} (zone ${zoneCode || "not set"})`,
     };
   }
 
@@ -190,21 +189,21 @@ export function calculateAustralia({
       country: "AUSTRALIA", currency: "AUD", transport: "Air", zone: zoneCode,
       duty: dutyAUD, clearance: fixedClearance, delivery: delivResult.delivery, total,
       breakdown: {
-        "Electronic processing":                          electronicProcessing,
-        "Quarantine processing":                          quarantineProcessing,
-        "Declaration charge":                             declarationCharge,
-        "Airline document fee":                           airlineDocFee,
-        "Customs clearance":                              customsClearance,
-        "Chain of responsibility":                        chainOfResponsibility,
-        "CMR fee":                                        cmrFee,
-        "Cargo terminal ops (per kg × 0.65)":            cargoTermOps,
-        "International terminal (min 80, per kg × 0.175)": intlTerminal,
-        "Destination quarantine":                         destQuarantine,
-        "Destination handling":                           destHandling,
-        [`Local delivery — ${delivResult.service} (incl. ${(fuel*100).toFixed(1)}% fuel)`]: delivResult.delivery,
-        ...(delivResult.t76Total ? { "Service compared — T76": delivResult.t76Total, "Service compared — S76": delivResult.s76Total } : {}),
+        "Electronic processing":          electronicProcessing,
+        "Quarantine processing":          quarantineProcessing,
+        "Declaration charge":             declarationCharge,
+        "Airline document fee":           airlineDocFee,
+        "Customs clearance":              customsClearance,
+        "Chain of responsibility":        chainOfResponsibility,
+        "CMR fee":                        cmrFee,
+        "Cargo terminal ops":             cargoTermOps,
+        "International terminal":         intlTerminal,
+        "Destination quarantine":         destQuarantine,
+        "Destination handling":           destHandling,
+        "Local delivery":                 delivResult.delivery,
       },
-      note: `Duty payable by consignee. Zone: ${zoneCode || "not set"}.`,
+      serviceUsed: delivResult.service,
+      note: `Local delivery: ${delivResult.service || "none"} (zone ${zoneCode || "not set"})`,
     };
   }
 
@@ -235,20 +234,20 @@ export function calculateAustralia({
       country: "AUSTRALIA", currency: "AUD", transport: "Sea", zone: zoneCode,
       duty: dutyAUD, clearance, delivery: delivResult.delivery, total,
       breakdown: {
-        "Destination port charges":     destPortCharges,
-        "Terminal handling":            terminalHandling,
-        "Delivery order fee":           deliveryOrderFee,
-        "Destination quarantine":       destQuarantineFee,
-        "CMR fee":                      cmrFee,
-        "Customs clearance":            customsClearance,
-        "Electronic entry":             electronicEntry,
-        "Quarantine fee":               quarantineFee,
-        "Declaration fee":              declarationFee,
-        "CBM charge":                   cbmCharge,
-        [`Local delivery — ${delivResult.service} (incl. ${(fuel*100).toFixed(1)}% fuel)`]: delivResult.delivery,
-        ...(delivResult.t76Total ? { "Service compared — T76": delivResult.t76Total, "Service compared — S76": delivResult.s76Total } : {}),
+        "Destination port charges":  destPortCharges,
+        "Terminal handling":         terminalHandling,
+        "Delivery order fee":        deliveryOrderFee,
+        "Destination quarantine":    destQuarantineFee,
+        "CMR fee":                   cmrFee,
+        "Customs clearance":         customsClearance,
+        "Electronic entry":          electronicEntry,
+        "Quarantine fee":            quarantineFee,
+        "Declaration fee":           declarationFee,
+        "CBM charge":                cbmCharge,
+        "Local delivery":            delivResult.delivery,
       },
-      note: `Duty payable by consignee. Zone: ${zoneCode || "not set"}.`,
+      serviceUsed: delivResult.service,
+      note: `Local delivery: ${delivResult.service || "none"} (zone ${zoneCode || "not set"})`,
     };
   }
 
