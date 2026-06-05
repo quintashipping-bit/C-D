@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp
 } from "firebase/firestore";
@@ -58,13 +58,11 @@ const AU_ZONE_LOOKUP = {
   "VIVA ENERGY (GEELONG)":"VV1","YARA PILBARA FERTILISERS":"WW1",
 };
 
-// Resolve zone code from a customer record — handles old and new formats
 function resolveZone(c) {
   if (c.zoneCode) return c.zoneCode;
-  // Old format: zone was stored as a string zone code
   const z = String(c.zone || "").trim().toUpperCase();
-  if (z && isNaN(z)) return z; // e.g. "VV1"
-  return ""; // numeric or empty — no zone code
+  if (z && isNaN(z)) return z;
+  return "";
 }
 
 const EMPTY_FORM = {
@@ -75,8 +73,8 @@ const EMPTY_FORM = {
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch]       = useState("");
-  const [showForm, setShowForm]   = useState(false);
-  const [editId, setEditId]       = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editId, setEditId]       = useState(null);   // which customer is being edited
   const [saving, setSaving]       = useState(false);
   const [migrating, setMigrating] = useState(false);
   const [form, setForm]           = useState(EMPTY_FORM);
@@ -91,38 +89,39 @@ export default function Customers() {
     setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   }
 
-  function resetForm() { setForm(EMPTY_FORM); setEditId(null); setShowForm(false); }
+  function resetForm() {
+    setForm(EMPTY_FORM);
+    setEditId(null);
+    setShowAddForm(false);
+  }
 
-  function startEdit(c) {
-    // Normalise country to match dropdown values (title case)
+  function startEdit(customer) {
     const normCountry = COUNTRIES.find(
-      opt => opt.toLowerCase() === (c.country || "").toLowerCase()
-    ) || c.country || "";
+      opt => opt.toLowerCase() === (customer.country || "").toLowerCase()
+    ) || customer.country || "";
     setForm({
-      name:      c.name      || "",
+      name:      customer.name      || "",
       country:   normCountry,
-      contact:   c.contact   || "",
-      email:     c.email     || "",
-      phone:     c.phone     || "",
-      zoneCode:  resolveZone(c),
-      zone:      c.zone      ?? "",
-      rateKg:    c.rateKg    ?? "",
-      surcharge: c.surcharge ?? "",
-      notes:     c.notes     || "",
+      contact:   customer.contact   || "",
+      email:     customer.email     || "",
+      phone:     customer.phone     || "",
+      zoneCode:  resolveZone(customer),
+      zone:      customer.zone      ?? "",
+      rateKg:    customer.rateKg    ?? "",
+      surcharge: customer.surcharge ?? "",
+      notes:     customer.notes     || "",
     });
-    setEditId(c.id);
-    setShowForm(true);
+    setEditId(customer.id);
+    setShowAddForm(false); // close add form if open
   }
 
   function handleNameChange(name) {
-    const zoneCode = (form.country?.toLowerCase() === "australia")
-      ? (AU_ZONE_LOOKUP[name.trim().toUpperCase()] || form.zoneCode)
-      : form.zoneCode;
+    const zoneCode = isAU ? (AU_ZONE_LOOKUP[name.trim().toUpperCase()] || form.zoneCode) : form.zoneCode;
     setForm(p => ({ ...p, name, zoneCode }));
   }
 
   function handleCountryChange(country) {
-    const zoneCode = (country?.toLowerCase() === "australia")
+    const zoneCode = country.toLowerCase() === "australia"
       ? (AU_ZONE_LOOKUP[form.name.trim().toUpperCase()] || form.zoneCode)
       : form.zoneCode;
     setForm(p => ({ ...p, country, zoneCode }));
@@ -137,14 +136,10 @@ export default function Customers() {
       phone: form.phone, notes: form.notes,
     };
     if (form.country?.toLowerCase() === "australia") {
-      Object.assign(base, {
-        zoneCode:  form.zoneCode,
-        zone:      form.zoneCode, // keep in sync
-        rateKg:    0, surcharge: 0,
-      });
+      Object.assign(base, { zoneCode: form.zoneCode, zone: form.zoneCode, rateKg: 0, surcharge: 0 });
     } else {
       Object.assign(base, {
-        zoneCode:  "",
+        zoneCode: "",
         zone:      Number(form.zone)      || 0,
         rateKg:    Number(form.rateKg)    || 0,
         surcharge: Number(form.surcharge) || 0,
@@ -163,34 +158,20 @@ export default function Customers() {
     await deleteDoc(doc(db, "customers", id)); load();
   }
 
-  // Fix all existing Australian customers that have no zoneCode set
   async function migrateZones() {
-    const auCustomers = customers.filter(c =>
+    const auNoZone = customers.filter(c =>
       (c.country || "").toLowerCase() === "australia" && !resolveZone(c)
     );
-    if (auCustomers.length === 0) {
-      alert("All Australian customers already have a zone code set.");
-      return;
-    }
-    if (!confirm(
-      `${auCustomers.length} Australian customer(s) have no zone code.\n\n` +
-      `This will attempt to match them from the Excel zone lookup by name.\n` +
-      `Unmatched customers will need to be set manually.\n\nContinue?`
-    )) return;
-
+    if (auNoZone.length === 0) { alert("All Australian customers already have a zone set."); return; }
+    if (!confirm(`Auto-match zones for ${auNoZone.length} Australian customer(s) from the Excel lookup?\nUnmatched ones will need manual assignment.`)) return;
     setMigrating(true);
-    let matched = 0, unmatched = 0;
-    for (const c of auCustomers) {
+    let matched = 0;
+    for (const c of auNoZone) {
       const zone = AU_ZONE_LOOKUP[c.name?.trim().toUpperCase()];
-      if (zone) {
-        await updateDoc(doc(db, "customers", c.id), { zoneCode: zone, zone });
-        matched++;
-      } else {
-        unmatched++;
-      }
+      if (zone) { await updateDoc(doc(db, "customers", c.id), { zoneCode: zone, zone }); matched++; }
     }
     setMigrating(false);
-    alert(`Done. ${matched} matched automatically. ${unmatched} still need manual zone assignment.`);
+    alert(`Done. ${matched} matched. ${auNoZone.length - matched} still need manual zone assignment.`);
     load();
   }
 
@@ -204,17 +185,98 @@ export default function Customers() {
     (c.country || "").toLowerCase() === "australia" && !resolveZone(c)
   ).length;
 
+  // Inline edit form JSX — reused inside the table
+  const EditForm = () => (
+    <div className="bg-slate-800 border-t border-b border-[#C4006A]/50 px-6 py-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-[#f472b6]">Editing: {form.name}</h3>
+        <button onClick={resetForm} className="text-slate-400 hover:text-white text-xs">✕ Cancel</button>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-3 mb-4">
+        <FormField label="Name *"        value={form.name}    onChange={v => handleNameChange(v)} />
+        <div>
+          <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Country</label>
+          <select
+            value={form.country}
+            onChange={e => handleCountryChange(e.target.value)}
+            className="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#C4006A]"
+          >
+            <option value="" className="bg-slate-900">— Select —</option>
+            {COUNTRIES.map(c => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
+          </select>
+        </div>
+        <FormField label="Contact"   value={form.contact}   onChange={v => setForm(p => ({...p, contact: v}))} />
+        <FormField label="Email"     value={form.email}     onChange={v => setForm(p => ({...p, email: v}))}   type="email" />
+        <FormField label="Phone"     value={form.phone}     onChange={v => setForm(p => ({...p, phone: v}))} />
+      </div>
+
+      {/* Australia zone */}
+      {isAU && (
+        <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-4 mb-4">
+          <div className="text-xs text-slate-300 font-semibold uppercase tracking-wide mb-3">Australia Delivery Zone</div>
+          <div className="grid md:grid-cols-2 gap-4 items-center">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1.5">Zone code</label>
+              <select
+                value={form.zoneCode}
+                onChange={e => setForm(p => ({...p, zoneCode: e.target.value}))}
+                className="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#C4006A]"
+                size={1}
+              >
+                {AU_ZONES.map(z => (
+                  <option key={z.code} value={z.code} className="bg-slate-900 text-slate-100 py-1">
+                    {z.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="text-xs text-slate-400">
+              {AU_ZONE_LOOKUP[form.name.trim().toUpperCase()]
+                ? <span className="text-green-400">✓ Auto-matched: <strong>{AU_ZONE_LOOKUP[form.name.trim().toUpperCase()]}</strong></span>
+                : "Select the zone matching this customer's delivery location."}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* South Africa */}
+      {isZA && (
+        <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-4 mb-4">
+          <div className="text-xs text-slate-300 font-semibold uppercase tracking-wide mb-3">South Africa Delivery Rates</div>
+          <div className="grid md:grid-cols-3 gap-3">
+            <FormField label="Zone base rate (ZAR)" value={form.zone}      onChange={v => setForm(p => ({...p, zone: v}))}      type="number" />
+            <FormField label="Rate per kg (ZAR)"     value={form.rateKg}    onChange={v => setForm(p => ({...p, rateKg: v}))}    type="number" />
+            <FormField label="Surcharge (ZAR)"       value={form.surcharge} onChange={v => setForm(p => ({...p, surcharge: v}))} type="number" />
+          </div>
+        </div>
+      )}
+
+      <FormField label="Notes" value={form.notes} onChange={v => setForm(p => ({...p, notes: v}))} />
+
+      <div className="flex gap-3 mt-4">
+        <button onClick={save} disabled={saving}
+          className="px-5 py-2 bg-[#C4006A] hover:bg-[#a3005a] rounded-lg text-sm font-semibold">
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button onClick={resetForm}
+          className="px-5 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-sm">Cancel</button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex bg-slate-950 text-white min-h-screen">
       <Sidebar />
       <div className="flex-1 p-8">
 
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white">Customers</h1>
             {auNoZone > 0 && (
               <p className="text-amber-400 text-xs mt-1">
-                ⚠ {auNoZone} Australian customer{auNoZone !== 1 ? "s" : ""} missing zone code — delivery cannot be calculated
+                ⚠ {auNoZone} Australian customer{auNoZone !== 1 ? "s" : ""} missing zone code
               </p>
             )}
           </div>
@@ -225,76 +287,55 @@ export default function Customers() {
                 {migrating ? "Fixing…" : `Fix ${auNoZone} AU zones`}
               </button>
             )}
-            <button onClick={() => { resetForm(); setShowForm(true); }}
-              className="px-4 py-2 bg-[#C4006A] hover:bg-[#a3005a] rounded-lg text-sm font-semibold">
-              + Add Customer
+            <button
+              onClick={() => { resetForm(); setShowAddForm(p => !p); }}
+              className="px-4 py-2 bg-[#C4006A] hover:bg-[#a3005a] rounded-lg text-sm font-semibold"
+            >
+              {showAddForm ? "✕ Cancel" : "+ Add Customer"}
             </button>
           </div>
         </div>
 
-        <input className="w-full mb-5" placeholder="Search by name or country…"
-          value={search} onChange={e => setSearch(e.target.value)} />
-
-        {/* ── Form ── */}
-        {showForm && (
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 mb-6">
-            <h2 className="text-base font-semibold mb-4">{editId ? "Edit" : "Add"} Customer</h2>
-            <div className="grid md:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Name *</label>
-                <input value={form.name} onChange={e => handleNameChange(e.target.value)} className="w-full" />
-              </div>
+        {/* Add form — only shown at top when adding new */}
+        {showAddForm && !editId && (
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 mb-5">
+            <h2 className="text-base font-semibold mb-4">Add Customer</h2>
+            <div className="grid md:grid-cols-3 gap-3 mb-4">
+              <FormField label="Name *"  value={form.name}    onChange={v => handleNameChange(v)} />
               <div>
                 <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">Country</label>
-                <select value={form.country} onChange={e => handleCountryChange(e.target.value)} className="w-full">
-                  <option value="">— Select —</option>
-                  {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+                <select value={form.country} onChange={e => handleCountryChange(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#C4006A]">
+                  <option value="" className="bg-slate-900">— Select —</option>
+                  {COUNTRIES.map(c => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
                 </select>
               </div>
-              <Field label="Contact name" value={form.contact} onChange={v => setForm(p => ({...p, contact: v}))} />
-              <Field label="Email" value={form.email} onChange={v => setForm(p => ({...p, email: v}))} type="email" />
-              <Field label="Phone" value={form.phone} onChange={v => setForm(p => ({...p, phone: v}))} />
+              <FormField label="Contact" value={form.contact} onChange={v => setForm(p => ({...p, contact: v}))} />
+              <FormField label="Email"   value={form.email}   onChange={v => setForm(p => ({...p, email: v}))}   type="email" />
+              <FormField label="Phone"   value={form.phone}   onChange={v => setForm(p => ({...p, phone: v}))} />
             </div>
 
-            {/* Australia zone */}
             {isAU && (
               <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-4">
-                <div className="text-xs text-slate-300 font-semibold uppercase tracking-wide mb-3">
-                  Australia Delivery Zone
-                </div>
-                <div className="grid md:grid-cols-2 gap-4 items-end">
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">Zone code</label>
-                    <select value={form.zoneCode}
-                      onChange={e => setForm(p => ({...p, zoneCode: e.target.value}))}
-                      className="w-full">
-                      {AU_ZONES.map(z => <option key={z.code} value={z.code}>{z.label}</option>)}
-                    </select>
-                  </div>
-                  <div className="text-xs text-slate-400 pb-1">
-                    {AU_ZONE_LOOKUP[form.name.trim().toUpperCase()]
-                      ? <span className="text-green-400">✓ Auto-matched from spreadsheet: <strong>{AU_ZONE_LOOKUP[form.name.trim().toUpperCase()]}</strong></span>
-                      : "Select the zone that matches this customer's delivery location."}
-                  </div>
-                </div>
+                <div className="text-xs text-slate-300 font-semibold uppercase tracking-wide mb-3">Australia Delivery Zone</div>
+                <select value={form.zoneCode}
+                  onChange={e => setForm(p => ({...p, zoneCode: e.target.value}))}
+                  className="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#C4006A]">
+                  {AU_ZONES.map(z => <option key={z.code} value={z.code} className="bg-slate-900 text-slate-100">{z.label}</option>)}
+                </select>
               </div>
             )}
-
-            {/* South Africa rates */}
             {isZA && (
               <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-4">
-                <div className="text-xs text-slate-300 font-semibold uppercase tracking-wide mb-3">
-                  South Africa Delivery Rates
-                </div>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <Field label="Zone base rate (ZAR)" value={form.zone}      onChange={v => setForm(p => ({...p, zone: v}))}      type="number" />
-                  <Field label="Rate per kg (ZAR)"     value={form.rateKg}    onChange={v => setForm(p => ({...p, rateKg: v}))}    type="number" />
-                  <Field label="Surcharge (ZAR)"       value={form.surcharge} onChange={v => setForm(p => ({...p, surcharge: v}))} type="number" />
+                <div className="text-xs text-slate-300 font-semibold uppercase tracking-wide mb-3">South Africa Delivery Rates</div>
+                <div className="grid md:grid-cols-3 gap-3">
+                  <FormField label="Zone base rate (ZAR)" value={form.zone}      onChange={v => setForm(p => ({...p, zone: v}))}      type="number" />
+                  <FormField label="Rate per kg (ZAR)"     value={form.rateKg}    onChange={v => setForm(p => ({...p, rateKg: v}))}    type="number" />
+                  <FormField label="Surcharge (ZAR)"       value={form.surcharge} onChange={v => setForm(p => ({...p, surcharge: v}))} type="number" />
                 </div>
               </div>
             )}
-
-            <Field label="Notes" value={form.notes} onChange={v => setForm(p => ({...p, notes: v}))} />
+            <FormField label="Notes" value={form.notes} onChange={v => setForm(p => ({...p, notes: v}))} />
             <div className="flex gap-3 mt-4">
               <button onClick={save} disabled={saving}
                 className="px-5 py-2 bg-[#C4006A] hover:bg-[#a3005a] rounded-lg text-sm font-semibold">
@@ -306,7 +347,15 @@ export default function Customers() {
           </div>
         )}
 
-        {/* ── Table ── */}
+        {/* Search */}
+        <input
+          className="w-full mb-5 bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#C4006A] placeholder-slate-500"
+          placeholder="Search by name or country…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+
+        {/* Table */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -317,39 +366,63 @@ export default function Customers() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => {
-                const zc = resolveZone(c);
-                const isAustralia = (c.country||"").toLowerCase() === "australia";
+              {filtered.map(customer => {
+                const zc = resolveZone(customer);
+                const isAustralia = (customer.country || "").toLowerCase() === "australia";
+                const isBeingEdited = editId === customer.id;
+
                 return (
-                  <tr key={c.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                    <td className="px-4 py-3 font-medium">{c.name}</td>
-                    <td className="px-4 py-3 text-slate-400 text-sm">{c.country}</td>
-                    <td className="px-4 py-3 text-slate-400 text-sm">{c.contact || "—"}</td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{c.email || "—"}</td>
-                    <td className="px-4 py-3">
-                      {isAustralia ? (
-                        zc
-                          ? <span className="text-xs px-2 py-1 rounded font-mono font-bold bg-[#C4006A]/20 text-[#f472b6] border border-[#C4006A]/30">{zc}</span>
-                          : <span className="text-xs px-2 py-1 rounded bg-amber-900/40 text-amber-400 border border-amber-800">⚠ No zone</span>
-                      ) : (
-                        <span className="text-slate-400 text-xs">
-                          {[
-                            c.zone     ? `Base: ${c.zone}`     : null,
-                            c.rateKg   ? `${c.rateKg}/kg`      : null,
-                            c.surcharge? `+${c.surcharge}`     : null,
-                          ].filter(Boolean).join(" · ") || "—"}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2 justify-end">
-                        <button onClick={() => startEdit(c)}
-                          className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs">Edit</button>
-                        <button onClick={() => remove(c.id)}
-                          className="px-3 py-1 bg-red-900/30 hover:bg-red-800/50 text-red-400 rounded text-xs">Delete</button>
-                      </div>
-                    </td>
-                  </tr>
+                  <React.Fragment key={customer.id}>
+                    {/* Customer row */}
+                    <tr className={`border-b border-slate-800/50 transition-colors ${isBeingEdited ? "bg-slate-800/60" : "hover:bg-slate-800/30"}`}>
+                      <td className="px-4 py-3 font-medium">{customer.name}</td>
+                      <td className="px-4 py-3 text-slate-400 text-sm">{customer.country}</td>
+                      <td className="px-4 py-3 text-slate-400 text-sm">{customer.contact || "—"}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">{customer.email || "—"}</td>
+                      <td className="px-4 py-3">
+                        {isAustralia ? (
+                          zc
+                            ? <span className="text-xs px-2 py-1 rounded font-mono font-bold bg-[#C4006A]/20 text-[#f472b6] border border-[#C4006A]/30">{zc}</span>
+                            : <span className="text-xs px-2 py-1 rounded bg-amber-900/40 text-amber-400 border border-amber-800">⚠ No zone</span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">
+                            {[
+                              customer.zone      ? `Base: ${customer.zone}`      : null,
+                              customer.rateKg    ? `${customer.rateKg}/kg`       : null,
+                              customer.surcharge ? `+${customer.surcharge}`      : null,
+                            ].filter(Boolean).join(" · ") || "—"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => isBeingEdited ? resetForm() : startEdit(customer)}
+                            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              isBeingEdited
+                                ? "bg-[#C4006A]/20 text-[#f472b6] border border-[#C4006A]/40"
+                                : "bg-slate-700 hover:bg-slate-600 text-slate-200"
+                            }`}
+                          >
+                            {isBeingEdited ? "Close" : "Edit"}
+                          </button>
+                          <button onClick={() => remove(customer.id)}
+                            className="px-3 py-1 bg-red-900/30 hover:bg-red-800/50 text-red-400 rounded text-xs">
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Inline edit form — directly below the edited row */}
+                    {isBeingEdited && (
+                      <tr>
+                        <td colSpan={6} className="p-0">
+                          <EditForm />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
@@ -364,11 +437,16 @@ export default function Customers() {
   );
 }
 
-function Field({ label, value, onChange, type = "text" }) {
+function FormField({ label, value, onChange, type = "text" }) {
   return (
     <div>
       <label className="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wide">{label}</label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} className="w-full" />
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#C4006A] transition-colors placeholder-slate-500"
+      />
     </div>
   );
 }
